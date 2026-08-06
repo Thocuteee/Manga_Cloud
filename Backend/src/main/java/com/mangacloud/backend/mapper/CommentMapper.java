@@ -3,39 +3,22 @@ package com.mangacloud.backend.mapper;
 import com.mangacloud.backend.dtos.request.CommentRequest;
 import com.mangacloud.backend.dtos.response.CommentResponse;
 import com.mangacloud.backend.model.Comment;
-import com.mangacloud.backend.model.User;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
-@Component
-public class CommentMapper {
-    public Comment toEntity(CommentRequest request, User currentUser, String userAvatarUrl) {
-        if (request == null) return null;
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface CommentMapper {
+    CommentResponse toResponse(Comment comment);
 
-        return Comment.builder()
-                .storySlug(request.getStorySlug())
-                .chapterName(request.getChapterName())
-                .userId(currentUser.getId())
-                .userName(currentUser.getUsername())
-                .userAvatar(userAvatarUrl) // Avatar lấy từ User profile
-                .content(request.getContent())
-                .createdAt(LocalDateTime.now())
-                .build();
-    }
+    List<CommentResponse> toResponseList(List<Comment> comments);
 
-    public CommentResponse toResponse(Comment comment) {
-        if (comment == null) return null;
-
-        return CommentResponse.builder()
-                .id(comment.getId())
-                .storySlug(comment.getStorySlug())
-                .chapterName(comment.getChapterName())
-                .userId(comment.getUserId())
-                .userName(comment.getUserName())
-                .userAvatar(comment.getUserAvatar())
-                .content(comment.getContent())
-                .createdAt(comment.getCreatedAt())
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "userName", ignore = true)
+    @Mapping(target = "userAvatar", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    Comment toEntity(CommentRequest request);
 }
