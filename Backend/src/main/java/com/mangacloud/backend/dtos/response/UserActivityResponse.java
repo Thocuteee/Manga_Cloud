@@ -16,12 +16,12 @@ public class UserActivityResponse {
     private String id;
     private String userId;
     private List<String> bookmarks;
-    private List<HistoryResponse> history;
+    private List<HistoryResponseItem> history;
 
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class HistoryResponse {
+    public static class HistoryResponseItem {
         private String storySlug;
         private String lastChapterName;
         private LocalDateTime readAt;

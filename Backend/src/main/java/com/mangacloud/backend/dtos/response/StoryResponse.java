@@ -21,8 +21,10 @@ public class StoryResponse {
     private String author;
     private List<String> categories;
     private String status;
-    private String sumary;
+    private String summary;
     private long viewCount;
     private boolean isPublic;
+    private double rating;
+    private LocalDateTime createdAt;
     private LocalDateTime updateAt;
 }

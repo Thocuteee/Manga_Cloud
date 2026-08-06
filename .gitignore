@@ -1,0 +1,45 @@
+# ==========================================
+# 1. Secret & Environment Variables
+# ==========================================
+*.env
+*.env.*
+!*.env.example
+
+# ==========================================
+# 2. VS Code & System Junk
+# ==========================================
+.vscode/
+*.code-workspace
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# 3. Java / Spring Boot Backend
+# ==========================================
+target/
+*.jar
+*.war
+*.ear
+*.class
+*.log
+hprof-headdump.hprof
+
+# ==========================================
+# 4. React / Next.js / Node.js Frontend
+# ==========================================
+node_modules/
+dist/
+build/
+.next/
+out/
+.vercel/
+.turbo/
+
+# Package Manager Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

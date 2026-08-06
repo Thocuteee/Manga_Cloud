@@ -38,6 +38,12 @@ public class Story {
 
     private String summary; 
 
+    @Field("rating")
+    private double rating;
+
+    @Field("created_at")
+    private LocalDateTime createdAt;
+
     @Field("view_count")
     private long viewCount;
 
