@@ -12,6 +12,8 @@ import org.mapstruct.ReportingPolicy;
 public interface UserMapper {
     UserResponse toUserResponse(User user);
 
+    @Mapping(target = "roles", source = "roles")
+    @Mapping(target = "createdAt", source = "createdAt")
     AuthResponse toAuthResponse(User user);
 
     @Mapping(target = "id", ignore = true)

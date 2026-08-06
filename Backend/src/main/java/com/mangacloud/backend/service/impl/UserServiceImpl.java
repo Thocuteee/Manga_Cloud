@@ -40,14 +40,20 @@ public class UserServiceImpl implements UserService{
 
         // 2. Tận dụng UserMapper để tạo Entity
         User user = userMapper.toEntity(request, encodedPassword);
-        userRepository.save(user);
+        
+        user.setRoles(java.util.List.of("ROLE_MEMBER")); // Gán role mặc định   
+        user.setCreatedAt(java.time.LocalDateTime.now()); 
+        user.setActive(true);
+
+        User savedUser = userRepository.save(user);
 
         // 3. Tạo JWT Token
-        String token = jwtUtil.generateToken(user.getUsername());
+        String token = jwtUtil.generateToken(savedUser.getUsername());
 
-        // 4. Tận dụng UserMapper để tạo AuthResponse
-        AuthResponse response = userMapper.toAuthResponse(user);
+        // 4. Tận dụng UserMapper để tạo AuthResponse từ savedUser đã có đầy đủ ID và thông tin
+        AuthResponse response = userMapper.toAuthResponse(savedUser);
         response.setToken(token); 
+        
         return response;
     }
 
