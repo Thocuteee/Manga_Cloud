@@ -1,0 +1,47 @@
+name: mangacloud
+
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.dev
+    container_name: mangacloud-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./Backend/.env
+    develop:
+      watch:
+        # Sync Backend source code changes and restart application process
+        - action: sync+restart
+          path: ./Backend/src
+          target: /app/src
+        # Rebuild container image when pom.xml changes
+        - action: rebuild
+          path: ./Backend/pom.xml
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile.dev
+    container_name: mangacloud-frontend
+    ports:
+      - "5173:5173"
+    develop:
+      watch:
+        # Hot-reload React components and assets
+        - action: sync
+          path: ./Frontend/src
+          target: /app/src
+        - action: sync
+          path: ./Frontend/public
+          target: /app/public
+        # Rebuild container when dependencies change
+        - action: rebuild
+          path: ./Frontend/package.json
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: mangacloud-network
