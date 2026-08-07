@@ -103,7 +103,7 @@ export const api = {
     method: 'POST',
   }),
 
-  importBatchOtruyenStories: (pages = 3) => request(`/admin/import-otruyen/batch?pages=${pages}`, {
+  importBatchOtruyenStories: (startPage = 1, endPage = 5) => request(`/admin/import-otruyen/batch?startPage=${startPage}&endPage=${endPage}`, {
     method: 'POST',
   }),
 

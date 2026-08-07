@@ -94,12 +94,15 @@ export default function AdminDashboard({
     }, 2000);
   };
 
-  const handleBatchImport = async (pagesCount = 3) => {
+  const [startPageInput, setStartPageInput] = useState(1);
+  const [endPageInput, setEndPageInput] = useState(5);
+
+  const handleBatchImport = async (startPage = 1, endPage = 5) => {
     setIsImporting(true);
     try {
-      const res = await api.importBatchOtruyenStories(pagesCount);
+      const res = await api.importBatchOtruyenStories(startPage, endPage);
       if (res && res.success) {
-        showToast(res.message || `🚀 Đã kích hoạt cào ngầm ${pagesCount} trang! Truyện sẽ tự động đổ về Database trong ít phút.`);
+        showToast(res.message || `🚀 Đã kích hoạt cào ngầm từ Trang ${startPage} đến Trang ${endPage}! Truyện đang đổ về DB.`);
         setShowOtruyenModal(false);
         startBackgroundPolling();
       } else {
@@ -370,6 +373,14 @@ export default function AdminDashboard({
     const chTitleStr = String(c.chapterTitle || c.title || '');
     return chNumStr.includes(q) || chTitleStr.toLowerCase().includes(q.toLowerCase());
   });
+
+  // Smart Truncated Pagination Helper (Ellipsis for large page counts)
+  const getVisiblePages = (current, total) => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
+    if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   // Overview metrics
   const totalStories = safeStories.length;
@@ -671,33 +682,49 @@ export default function AdminDashboard({
             </div>
 
             {/* Pagination Controls Bar (Feature 4) */}
-            <div className="admin-pagination-bar">
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            <div className="admin-pagination-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', padding: '16px 20px', borderTop: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 Hiển thị <strong>{paginatedStories.length > 0 ? (safeCurrentPage - 1) * pageSize + 1 : 0}</strong> - <strong>{Math.min(safeCurrentPage * pageSize, totalFilteredCount)}</strong> trên tổng số <strong>{totalFilteredCount}</strong> bộ truyện
               </div>
 
               {totalPages > 1 && (
-                <div className="pagination-controls">
+                <div className="pagination-controls" style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <button
                     className="page-btn"
+                    style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '6px', cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer' }}
                     disabled={safeCurrentPage === 1}
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   >
                     ‹ Trước
                   </button>
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <button
-                      key={p}
-                      className={`page-btn ${safeCurrentPage === p ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(p)}
-                    >
-                      {p}
-                    </button>
+                  {getVisiblePages(safeCurrentPage, totalPages).map((p, idx) => (
+                    p === '...' ? (
+                      <span key={`ellipsis-${idx}`} style={{ padding: '0 6px', color: 'var(--text-muted)', fontSize: '12px' }}>...</span>
+                    ) : (
+                      <button
+                        key={p}
+                        className={`page-btn ${safeCurrentPage === p ? 'active' : ''}`}
+                        style={{
+                          padding: '6px 10px',
+                          fontSize: '12px',
+                          borderRadius: '6px',
+                          backgroundColor: safeCurrentPage === p ? 'var(--accent-pink)' : 'transparent',
+                          color: safeCurrentPage === p ? '#fff' : 'var(--text-color)',
+                          border: '1px solid var(--border-color)',
+                          cursor: 'pointer',
+                          minWidth: '32px'
+                        }}
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </button>
+                    )
                   ))}
 
                   <button
                     className="page-btn"
+                    style={{ padding: '6px 12px', fontSize: '12px', borderRadius: '6px', cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer' }}
                     disabled={safeCurrentPage === totalPages}
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   >
@@ -998,7 +1025,19 @@ export default function AdminDashboard({
                             <button
                               className="admin-action-btn edit"
                               style={{ padding: '4px 8px', fontSize: '11px' }}
-                              onClick={() => setPreviewPagesModal(ch)}
+                              onClick={async () => {
+                                setPreviewPagesModal(ch);
+                                if ((!ch.pages || ch.pages.length === 0) && selectedStoryForChapters?.slug) {
+                                  try {
+                                    const chName = ch.chapterName || ch.chapterNumber;
+                                    const detail = await api.getChapterDetail(selectedStoryForChapters.slug, chName);
+                                    if (detail && detail.pages && detail.pages.length > 0) {
+                                      setPreviewPagesModal(detail);
+                                      setStoryChapters(prev => prev.map(item => (item.id === detail.id || item.chapterName === chName) ? detail : item));
+                                    }
+                                  } catch (e) {}
+                                }
+                              }}
                             >
                               👁️ Ảnh
                             </button>
@@ -1033,14 +1072,21 @@ export default function AdminDashboard({
           <div className="modal-card" style={{ width: '600px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 800 }}>
-                👁️ Trang Ảnh: {previewPagesModal.title}
+                👁️ Trang Ảnh: {previewPagesModal.chapterTitle || previewPagesModal.title || `Chapter ${previewPagesModal.chapterName || previewPagesModal.chapterNumber || ''}`}
               </h3>
               <button className="auth-close-btn" onClick={() => setPreviewPagesModal(null)}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '450px', overflowY: 'auto' }}>
-              {(previewPagesModal.pages || [DEFAULT_COVER_IMAGE]).map((url, idx) => (
-                <img key={idx} src={url} alt={`Page ${idx + 1}`} style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
-              ))}
+              {previewPagesModal.pages && previewPagesModal.pages.length > 0 ? (
+                previewPagesModal.pages.map((url, idx) => (
+                  <img key={idx} src={url} alt={`Page ${idx + 1}`} style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)' }} />
+                ))
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div className="loading-spinner" style={{ margin: '0 auto 12px auto' }}></div>
+                  Đang tự động tải danh sách trang ảnh Webtoon từ Otruyen CDN...
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1149,25 +1195,84 @@ export default function AdminDashboard({
               <button className="close-btn" onClick={() => !isImporting && setShowOtruyenModal(false)}>✕</button>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ backgroundColor: '#8b5cf6', fontSize: '13px', padding: '10px 16px', flex: 1 }}
-                onClick={() => handleBatchImport(3)}
-                disabled={isImporting}
-              >
-                ⚡ Kéo 72 Bộ Truyện Mới
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ backgroundColor: '#059669', fontSize: '13px', padding: '10px 16px', flex: 1 }}
-                onClick={() => handleBatchImport(5)}
-                disabled={isImporting}
-              >
-                🔥 Kéo 120 Bộ Truyện Mới
-              </button>
+            <div style={{ backgroundColor: 'var(--bg-hover)', padding: '16px', borderRadius: '12px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', display: 'block' }}>
+                🌐 Chọn Khoảng Trang Cào Dữ Liệu Ngầm (Tùy Chỉnh 1 → 100+ Trang):
+              </label>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Từ Trang:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-control"
+                    style={{ padding: '6px 10px', marginTop: '4px' }}
+                    value={startPageInput}
+                    onChange={(e) => setStartPageInput(Math.max(1, parseInt(e.target.value) || 1))}
+                  />
+                </div>
+                <div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Đến Trang:</span>
+                  <input
+                    type="number"
+                    min={startPageInput}
+                    className="form-control"
+                    style={{ padding: '6px 10px', marginTop: '4px' }}
+                    value={endPageInput}
+                    onChange={(e) => setEndPageInput(Math.max(startPageInput, parseInt(e.target.value) || startPageInput))}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  style={{ backgroundColor: '#8b5cf6', marginTop: '18px', padding: '8px 12px', fontSize: '13px' }}
+                  onClick={() => handleBatchImport(startPageInput, endPageInput)}
+                  disabled={isImporting}
+                >
+                  🚀 Kéo Trang {startPageInput} → {endPageInput}
+                </button>
+              </div>
+
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Gợi ý nhanh khoảng trang để kéo truyện mới liên tục:</div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                  onClick={() => { setStartPageInput(1); setEndPageInput(5); handleBatchImport(1, 5); }}
+                  disabled={isImporting}
+                >
+                  ⚡ Đợt 1: Trang 1 → 5 (120 Bộ)
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                  onClick={() => { setStartPageInput(6); setEndPageInput(20); handleBatchImport(6, 20); }}
+                  disabled={isImporting}
+                >
+                  🚀 Đợt 2: Trang 6 → 20 (360 Bộ)
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                  onClick={() => { setStartPageInput(21); setEndPageInput(50); handleBatchImport(21, 50); }}
+                  disabled={isImporting}
+                >
+                  🔥 Đợt 3: Trang 21 → 50 (720 Bộ)
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ fontSize: '11px', padding: '4px 8px' }}
+                  onClick={() => { setStartPageInput(51); setEndPageInput(100); handleBatchImport(51, 100); }}
+                  disabled={isImporting}
+                >
+                  👑 Đợt 4: Trang 51 → 100 (1.200 Bộ)
+                </button>
+              </div>
             </div>
 
             <div className="form-group" style={{ marginBottom: '16px' }}>
