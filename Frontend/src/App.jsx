@@ -2,116 +2,291 @@ import React, { useState, useEffect } from 'react';
 import api from './services/api';
 import './index.css';
 
-// Helper auto-slug generator
-function generateSlug(text) {
-  if (!text) return '';
-  return text
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[đĐ]/g, 'd')
-    .replace(/[^a-z0-9 -]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
-}
+const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80';
+
+// Sample categories list for Sub-Navbar dropdown
+const CATEGORIES_LIST = [
+  'Action', 'Adventure', 'Anime', 'Comedy', 'Cyberpunk', 'Drama', 
+  'Fantasy', 'Horror', 'Isekai', 'Manhua', 'Manhwa', 'Mecha', 
+  'Mystery', 'Psychological', 'Romance', 'Sci-Fi', 'Shounen', 
+  'Slice of Life', 'Supernatural', 'Thriller'
+];
+
+// Mockdata items for Homepage Banner & Grid Seeding (12 Rich Items)
+const INITIAL_MOCK_STORIES = [
+  {
+    id: 's1',
+    name: 'Vô Tình Lệch Khỏi Quỹ Đạo',
+    slug: 'vo-tinh-lech-khoi-quy-dao',
+    thumbUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
+    author: 'Diệu Linh',
+    categories: ['Romance', 'Drama'],
+    status: 'Ongoing',
+    summary: 'Tôi ở bên vị đại lão giới thượng lưu Hồng Kông suốt ba năm, đến đúng ngày anh đính hôn thì tôi quyết định cắt đứt quan hệ và rời đi...',
+    viewCount: 1250000,
+    updatedTime: '10 phút trước',
+    latestChapter: 'Ch. 124',
+    isHot: true
+  },
+  {
+    id: 's2',
+    name: 'Bạn Cùng Phòng Là Người Thực Vật',
+    slug: 'ban-cung-phong-la-nguoi-thuc-vat',
+    thumbUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=80',
+    author: 'An An',
+    categories: ['Supernatural', 'Romance'],
+    status: 'Ongoing',
+    summary: 'Tôi lại bắt đầu đi quấy rầy anh bạn cùng phòng là người thực vật. Lải nhải bên tai anh ấy về những bí mật không ai biết...',
+    viewCount: 980000,
+    updatedTime: '30 phút trước',
+    latestChapter: 'Ch. 45',
+    isHot: true
+  },
+  {
+    id: 's3',
+    name: 'Monolith Protocol',
+    slug: 'monolith-protocol',
+    thumbUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80',
+    author: 'DevGod',
+    categories: ['Mystery', 'Thriller'],
+    status: 'Completed',
+    summary: 'Deep inside the ancient server ruins, an archaic protocol awakens to judge humanity.',
+    viewCount: 840000,
+    updatedTime: '1 giờ trước',
+    latestChapter: 'Ch. 180',
+    isHot: true
+  },
+  {
+    id: 's4',
+    name: 'Hạ Giới Lãng Mạn',
+    slug: 'ha-gioi-lang-man',
+    thumbUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80',
+    author: 'Hạ Vy',
+    categories: ['Romance', 'Fantasy'],
+    status: 'Ongoing',
+    summary: 'Chuyện tình lãng mạn giữa thế giới thần tiên và trần thế khi định mệnh đan xen.',
+    viewCount: 750000,
+    updatedTime: '2 giờ trước',
+    latestChapter: 'Ch. 42'
+  },
+  {
+    id: 's5',
+    name: 'Anh Và Cố Nhân',
+    slug: 'anh-va-co-nhan',
+    thumbUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
+    author: 'Phương Thảo',
+    categories: ['Drama', 'Romance'],
+    status: 'Ongoing',
+    summary: 'Những ký ức xưa cũ trỗi dậy giữa hai con người từng thương nhưng vì hiểu lầm mà xa cách.',
+    viewCount: 690000,
+    updatedTime: '4 giờ trước',
+    latestChapter: 'Ch. 108'
+  },
+  {
+    id: 's6',
+    name: 'Midnight Brew',
+    slug: 'midnight-brew',
+    thumbUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=80',
+    author: 'CoffeeBean',
+    categories: ['Slice of Life', 'Supernatural'],
+    status: 'Ongoing',
+    summary: 'A cozy coffee shop that opens only at midnight for supernatural beings seeking warmth.',
+    viewCount: 520000,
+    updatedTime: '5 giờ trước',
+    latestChapter: 'Ch. 15'
+  },
+  {
+    id: 's7',
+    name: 'Framework Zero',
+    slug: 'framework-zero',
+    thumbUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80',
+    author: 'ReactNinja',
+    categories: ['Action', 'Sci-Fi'],
+    status: 'Ongoing',
+    summary: 'The ultimate virtual reality tournament where warriors build custom combat modules.',
+    viewCount: 480000,
+    updatedTime: '8 giờ trước',
+    latestChapter: 'Ch. 88'
+  },
+  {
+    id: 's8',
+    name: 'Cloud Native',
+    slug: 'cloud-native',
+    thumbUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop&q=80',
+    author: 'SkyWalker',
+    categories: ['Adventure', 'Fantasy'],
+    status: 'Ongoing',
+    summary: 'Island kingdoms floating in the troposphere wage war over cloud water crystals.',
+    viewCount: 410000,
+    updatedTime: '12 giờ trước',
+    latestChapter: 'Ch. 3'
+  },
+  {
+    id: 's9',
+    name: 'Null Pointer',
+    slug: 'null-pointer',
+    thumbUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=80',
+    author: 'SegFault',
+    categories: ['Horror', 'Psychological'],
+    status: 'Completed',
+    summary: 'Memory leaks in human consciousness cause people to forget their own identity.',
+    viewCount: 390000,
+    updatedTime: '1 ngày trước',
+    latestChapter: 'Vol. 4'
+  },
+  {
+    id: 's10',
+    name: 'Đảo Hải Tặc (One Piece)',
+    slug: 'one-piece',
+    thumbUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
+    author: 'Eiichiro Oda',
+    categories: ['Action', 'Adventure'],
+    status: 'Ongoing',
+    summary: 'Hành trình tìm kiếm kho báu One Piece của thuyền trưởng Monkey D. Luffy và đồng đội!',
+    viewCount: 45000000,
+    updatedTime: '1 ngày trước',
+    latestChapter: 'Ch. 1104',
+    isHot: true
+  },
+  {
+    id: 's11',
+    name: 'Solo Leveling (Tôi Thăng Cấp Một Mình)',
+    slug: 'solo-leveling',
+    thumbUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=80',
+    author: 'Chugong',
+    categories: ['Action', 'Fantasy'],
+    status: 'Completed',
+    summary: 'Hành trình thợ săn yếu nhất Hạng E Sung Jin-Woo trở thành Thần Thợ Săn đỉnh phong.',
+    viewCount: 28000000,
+    updatedTime: '2 ngày trước',
+    latestChapter: 'Ch. 179',
+    isHot: true
+  },
+  {
+    id: 's12',
+    name: 'Monster (Quái Vật)',
+    slug: 'monster',
+    thumbUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80',
+    author: 'Naoki Urasawa',
+    categories: ['Mystery', 'Thriller'],
+    status: 'Completed',
+    summary: 'Bác sĩ Tenma truy tìm sự thật kinh hoàng đằng sau Johan Liebert.',
+    viewCount: 8200000,
+    updatedTime: '3 ngày trước',
+    latestChapter: 'Ch. 162'
+  }
+];
 
 export default function App() {
-  const [theme, setTheme] = useState('dark');
-  const [activeNav, setActiveNav] = useState('Dashboard');
+  const [theme, setTheme] = useState(() => localStorage.getItem('mangacloud_theme') || 'light');
+  const [routePath, setRoutePath] = useState(window.location.pathname || '/');
+
+  // User state & Bookmarks list
+  const [user, setUser] = useState({ username: 'Admin User', email: 'sysadmin@mangacloud.com', role: 'ROLE_ADMIN' });
+  const [userRole, setUserRole] = useState('ADMIN'); // 'GUEST' | 'MEMBER' | 'ADMIN'
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showCategoryPopover, setShowCategoryPopover] = useState(false);
+
+  // Data & Toast state
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Auth state
-  const [user, setUser] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginForm, setLoginForm] = useState({ usernameOrEmail: '', password: '' });
-  const [loginError, setLoginError] = useState('');
-
-  // Toast Notification State
   const [toast, setToast] = useState(null);
+  const [displayCount, setDisplayCount] = useState(18);
 
-  // Search & Filter State with 300ms Debounce
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  // Active Selected Story & Chapter for Detail/Read Routes
+  const [selectedStory, setSelectedStory] = useState(null);
+  const [selectedChapter, setSelectedChapter] = useState(null);
 
-  // Story Form Modal State (Add / Edit)
-  const [showStoryModal, setShowStoryModal] = useState(false);
-  const [editingStory, setEditingStory] = useState(null);
-  const [storyForm, setStoryForm] = useState({
-    name: '',
-    originNameStr: '',
-    thumbUrl: '',
-    author: '',
-    categoriesStr: '',
-    status: 'Ongoing',
-    summary: '',
-    isPublic: true
-  });
-  const [storyFormErrors, setStoryFormErrors] = useState({});
-  const [formSubmitting, setFormSubmitting] = useState(false);
+  // Admin View State
+  const [adminActiveNav, setAdminActiveNav] = useState('Dashboard');
 
-  // Chapter Uploader State
-  const [chapterForm, setChapterForm] = useState({
-    storySlug: '',
-    chapterName: '',
-    chapterTitle: '',
-    chapterApiUrl: ''
-  });
-  const [chapterFiles, setChapterFiles] = useState([]);
-  const [chapterFormErrors, setChapterFormErrors] = useState({});
-  const [chapterSubmitting, setChapterSubmitting] = useState(false);
+  const navigate = (path) => {
+    window.history.pushState({}, '', path);
+    setRoutePath(path);
 
-  // Auto-dismiss Toast after 3 seconds
+    if (path.startsWith('/story/')) {
+      const slug = path.replace('/story/', '');
+      const found = stories.find(s => s.slug === slug);
+      if (found) setSelectedStory(found);
+    } else if (path.startsWith('/read/')) {
+      const parts = path.replace('/read/', '').split('/');
+      const slug = parts[0];
+      const chapter = parts[1] || '1';
+      const found = stories.find(s => s.slug === slug);
+      if (found) {
+        setSelectedStory(found);
+        setSelectedChapter(chapter);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setRoutePath(window.location.pathname || '/');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('mangacloud_theme', theme);
+  }, [theme]);
+
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Load theme and auth user from localStorage
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('user');
-      }
+  const sanitizeThumbUrl = (url) => {
+    if (!url || typeof url !== 'string' || url.trim() === '' || url.startsWith('blob:')) {
+      return DEFAULT_COVER_IMAGE;
     }
+    return url;
+  };
 
-    const handleUnauthorized = () => {
-      setUser(null);
-      setShowLoginModal(true);
-      showToast('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!', 'error');
-    };
+  // Toggle Bookmark Handler
+  const toggleBookmark = (id, storyName, e) => {
+    e.stopPropagation();
+    setBookmarkedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        showToast(`Đã bỏ theo dõi: ${storyName}`);
+      } else {
+        next.add(id);
+        showToast(`❤️ Đã lưu "${storyName}" vào Theo Dõi!`);
+      }
+      return next;
+    });
+  };
 
-    window.addEventListener('auth:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, [theme]);
-
-  // Debounce Search Term (300ms delay)
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchTerm]);
-
-  // Fetch Stories from Spring Boot Backend API
+  // Fetch stories & Merge with Mocks so 6-Column Grid is ALWAYS 100% full!
   const fetchStoriesData = async () => {
     setLoading(true);
-    setError(null);
     try {
-      const data = await api.getStories();
-      setStories(data || []);
-    } catch (err) {
-      console.error('Error fetching stories:', err);
-      setError('Không thể kết nối đến Backend API (http://localhost:8080). Hãy chắc chắn Backend đang chạy!');
+      const apiData = await api.getStories().catch(() => []);
+      if (apiData && apiData.length > 0) {
+        const sanitizedApi = apiData.map((item) => ({
+          ...item,
+          id: item.id || item.slug,
+          thumbUrl: sanitizeThumbUrl(item.thumbUrl),
+          author: item.author || 'MangaCloud',
+          latestChapter: item.latestChapter || 'Ch. 1',
+          updatedTime: item.updatedTime || '10 phút trước',
+          isHot: item.viewCount > 500000 || item.isHot
+        }));
+
+        // Merge fetched API data with Mocks to guarantee at least 12-18 grid items
+        const existingSlugs = new Set(sanitizedApi.map(s => s.slug));
+        const remainingMocks = INITIAL_MOCK_STORIES.filter(m => !existingSlugs.has(m.slug));
+        setStories([...sanitizedApi, ...remainingMocks]);
+      } else {
+        setStories(INITIAL_MOCK_STORIES);
+      }
+    } catch (e) {
+      setStories(INITIAL_MOCK_STORIES);
     } finally {
       setLoading(false);
     }
@@ -125,199 +300,24 @@ export default function App() {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
-  // Handle Login Submit
-  const handleLoginSubmit = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-    setFormSubmitting(true);
-
-    try {
-      const data = await api.login(loginForm.usernameOrEmail, loginForm.password);
-      setUser(data);
-      setShowLoginModal(false);
-      setLoginForm({ usernameOrEmail: '', password: '' });
-      showToast('Đăng nhập thành công!');
-      fetchStoriesData();
-    } catch (err) {
-      setLoginError(err.message || 'Đăng nhập thất bại!');
-    } finally {
-      setFormSubmitting(false);
+  const handleRoleSwitch = (role) => {
+    setUserRole(role);
+    if (role === 'GUEST') {
+      setUser(null);
+      showToast('Đã chuyển sang vai trò: Khách vô danh (Guest)');
+    } else if (role === 'MEMBER') {
+      setUser({ username: 'Kuro22', email: 'kuro22@mangacloud.com', role: 'ROLE_MEMBER' });
+      showToast('Đã chuyển sang vai trò: Thành viên (Member)');
+    } else if (role === 'ADMIN') {
+      setUser({ username: 'Admin User', email: 'sysadmin@mangacloud.com', role: 'ROLE_ADMIN' });
+      showToast('Đã chuyển sang vai trò: Quản trị viên (Admin)');
     }
   };
 
-  // Open Story Modal for Creating
-  const handleOpenAddStoryModal = () => {
-    setEditingStory(null);
-    setStoryForm({
-      name: '',
-      originNameStr: '',
-      thumbUrl: '',
-      author: '',
-      categoriesStr: 'Action, Adventure, Shounen',
-      status: 'Ongoing',
-      summary: '',
-      isPublic: true
-    });
-    setStoryFormErrors({});
-    setShowStoryModal(true);
-  };
-
-  // Open Story Modal for Editing
-  const handleOpenEditStoryModal = (story) => {
-    setEditingStory(story);
-    setStoryForm({
-      name: story.name || '',
-      originNameStr: story.originName ? story.originName.join(', ') : '',
-      thumbUrl: story.thumbUrl || '',
-      author: story.author || '',
-      categoriesStr: story.categories ? story.categories.join(', ') : '',
-      status: story.status || 'Ongoing',
-      summary: story.summary || '',
-      isPublic: story.isPublic !== undefined ? story.isPublic : true
-    });
-    setStoryFormErrors({});
-    setShowStoryModal(true);
-  };
-
-  // Validate Story Form
-  const validateStoryForm = () => {
-    const errors = {};
-    if (!storyForm.name.trim()) {
-      errors.name = 'Tên bộ truyện không được để trống!';
-    }
-    setStoryFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle Submit Story Form (Create / Update)
-  const handleStoryFormSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateStoryForm()) return;
-
-    setFormSubmitting(true);
-    try {
-      const payload = {
-        name: storyForm.name.trim(),
-        originName: storyForm.originNameStr ? storyForm.originNameStr.split(',').map(s => s.trim()).filter(Boolean) : [],
-        thumbUrl: storyForm.thumbUrl.trim() || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=300&auto=format&fit=crop&q=80',
-        author: storyForm.author.trim() || 'Đang cập nhật',
-        categories: storyForm.categoriesStr ? storyForm.categoriesStr.split(',').map(s => s.trim()).filter(Boolean) : ['Manga'],
-        status: storyForm.status,
-        summary: storyForm.summary.trim(),
-        isPublic: storyForm.isPublic
-      };
-
-      if (editingStory) {
-        await api.updateStory(editingStory.id, payload);
-        showToast(`Cập nhật bộ truyện "${payload.name}" thành công!`);
-      } else {
-        await api.createStory(payload);
-        showToast(`Thêm mới bộ truyện "${payload.name}" thành công!`);
-      }
-
-      setShowStoryModal(false);
-      fetchStoriesData(); // State Sync
-    } catch (err) {
-      showToast(err.message || 'Thao tác thất bại!', 'error');
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  // Handle Delete Story
-  const handleDeleteStory = async (story) => {
-    if (!confirm(`Bạn có chắc chắn muốn xóa bộ truyện "${story.name}" khỏi hệ thống?`)) return;
-
-    try {
-      await api.deleteStory(story.id);
-      showToast(`Đã xóa bộ truyện "${story.name}"!`);
-      fetchStoriesData(); // State Sync
-    } catch (err) {
-      showToast(err.message || 'Xóa bộ truyện thất bại!', 'error');
-    }
-  };
-
-  // Validate Chapter Form
-  const validateChapterForm = () => {
-    const errors = {};
-    if (!chapterForm.storySlug) {
-      errors.storySlug = 'Vui lòng chọn bộ truyện!';
-    }
-    if (!chapterForm.chapterName.trim()) {
-      errors.chapterName = 'Số/Tên Chapter không được để trống (VD: 1084 hoặc Chapter 1084)!';
-    }
-    setChapterFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle Submit Chapter Upload
-  const handleChapterUploadSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateChapterForm()) return;
-
-    setChapterSubmitting(true);
-    try {
-      const payload = {
-        storySlug: chapterForm.storySlug,
-        chapterName: chapterForm.chapterName.trim(),
-        chapterTitle: chapterForm.chapterTitle.trim() || `Chapter ${chapterForm.chapterName.trim()}`,
-        chapterApiUrl: chapterForm.chapterApiUrl.trim() || (chapterFiles.length > 0 ? `local://${chapterFiles.length}-images` : 'https://api.mangacloud.net/images')
-      };
-
-      await api.createChapter(payload);
-      showToast(`Đăng Chapter ${payload.chapterName} cho bộ truyện thành công!`);
-
-      // Reset Form
-      setChapterForm({
-        storySlug: '',
-        chapterName: '',
-        chapterTitle: '',
-        chapterApiUrl: ''
-      });
-      setChapterFiles([]);
-      fetchStoriesData(); // State Sync
-    } catch (err) {
-      showToast(err.message || 'Đăng Chapter thất bại!', 'error');
-    } finally {
-      setChapterSubmitting(false);
-    }
-  };
-
-  // Handle Local Image Files Select / Drop
-  const handleFileDrop = (files) => {
-    const fileList = Array.from(files);
-    setChapterFiles(prev => [...prev, ...fileList]);
-  };
-
-  // Filter stories based on debounced search term and status filter
-  const filteredStories = stories.filter(story => {
-    const matchesSearch = !debouncedSearchTerm || 
-      story.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      story.author?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      story.slug?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'ALL' || 
-      story.status?.toUpperCase() === statusFilter.toUpperCase();
-
-    return matchesSearch && matchesStatus;
-  });
-
-  const totalStoriesCount = stories.length;
-  const totalViewsSum = stories.reduce((acc, curr) => acc + (curr.viewCount || 0), 0);
-  const formattedTotalViews = totalViewsSum > 1000000 
-    ? (totalViewsSum / 1000000).toFixed(1) + 'M' 
-    : totalViewsSum > 1000 
-    ? (totalViewsSum / 1000).toFixed(1) + 'k' 
-    : totalViewsSum.toString();
-
-  const navItems = [
-    { name: 'Dashboard', icon: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8v-10h-8v10zm0-18v6h8V3h-8z' },
-    { name: 'Story Management', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
-    { name: 'Chapter Uploader', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' },
-    { name: 'User Management', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-    { name: 'Analytics', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-    { name: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
-  ];
+  // Data Sections for Homepage (Ensure 6-column grid is filled)
+  const topViewStories = [...stories].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 12);
+  const featuredStories = stories.slice(0, 12);
+  const latestStories = stories.slice(0, displayCount);
 
   return (
     <div className="app-container">
@@ -331,711 +331,597 @@ export default function App() {
         </div>
       )}
 
-      {/* Sidebar Navigation */}
-      <aside className="sidebar">
-        <div>
-          <div className="brand-header">
-            <h1 className="brand-title">MangaCloud Admin</h1>
-            <p className="brand-subtitle">Infrastructure Management</p>
-          </div>
-
-          <ul className="nav-menu">
-            {navItems.map((item) => (
-              <li key={item.name}>
-                <a
-                  href={`#${item.name}`}
-                  className={`nav-item ${activeNav === item.name ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveNav(item.name);
-                  }}
-                >
-                  <svg className="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-                  </svg>
-                  {item.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* User Profile */}
-        <div className="user-profile" style={{ flexDirection: 'column', gap: '8px', alignItems: 'stretch' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img
-              src={user ? `https://ui-avatars.com/api/?name=${user.username}&background=3b82f6&color=fff` : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"}
-              alt="User Avatar"
-              className="avatar"
-            />
-            <div className="user-info" style={{ flex: 1 }}>
-              <span className="user-name">{user ? user.username : 'Khách (Chưa đăng nhập)'}</span>
-              <span className="user-email">{user ? user.email : 'Bấm Đăng nhập để dùng API'}</span>
+      {/* 1. TOP MAIN HEADER ROW */}
+      <div style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-color)', width: '100%' }}>
+        <header className="top-main-header">
+          {/* Left: Brand Logo Ổ Truyện Style */}
+          <div className="header-brand" onClick={() => navigate('/')}>
+            <div className="brand-logo-card">
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="brand-name">MangaCloud</div>
+              <div className="brand-tag">Ổ Truyện Soft Pink</div>
             </div>
           </div>
 
-          {user ? (
-            <button
-              onClick={() => {
-                api.logout();
-                setUser(null);
-                showToast('Đã đăng xuất!');
-              }}
-              className="btn-secondary"
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-            >
-              Đăng xuất
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="btn-primary"
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-            >
-              Đăng nhập Backend
-            </button>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Wrapper */}
-      <div className="main-wrapper">
-        {/* Top Header */}
-        <header className="top-header">
-          <div className="search-bar">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--text-muted)' }}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              className="search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search stories, author, slug (Debounce 300ms)..."
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' }}
-              >
-                ✕
+          {/* Center: Search Bar with Search Button */}
+          <div className="header-search">
+            <div className="search-bar-input-wrapper">
+              <input
+                type="text"
+                className="header-search-input"
+                placeholder="Tìm truyện..."
+              />
+              <button className="btn-search-icon" title="Tìm kiếm">
+                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </button>
-            )}
+            </div>
           </div>
 
-          <div className="header-actions">
-            <button className="icon-btn" onClick={fetchStoriesData} title="Refresh API Data">
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
+          {/* Right: Quick Action Buttons */}
+          <div className="header-actions-group">
+            {userRole === 'GUEST' ? (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn-primary"
+                  onClick={() => handleRoleSwitch('MEMBER')}
+                  style={{ padding: '8px 18px', fontSize: '13px', borderRadius: '8px', backgroundColor: '#f472b6' }}
+                >
+                  Đăng Nhập
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => handleRoleSwitch('MEMBER')}
+                  style={{ padding: '8px 18px', fontSize: '13px', borderRadius: '8px', backgroundColor: '#ec4899' }}
+                >
+                  Đăng Ký
+                </button>
+              </div>
+            ) : (
+              <>
+                <button className="icon-btn" title="Notifications">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </button>
 
-            {/* Light / Dark Mode Toggle */}
-            <button className="icon-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}>
-              {theme === 'dark' ? (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              )}
-            </button>
+                <button className="icon-btn" onClick={toggleTheme} title={`Chuyển sang ${theme === 'light' ? 'Dark' : 'Light'} mode`}>
+                  {theme === 'dark' ? (
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  )}
+                </button>
+
+                <div className="profile-menu-container">
+                  <div className="profile-trigger" onClick={() => setShowProfileDropdown(!showProfileDropdown)}>
+                    <img
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
+                      alt="User Avatar"
+                      className="avatar"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+                        {userRole === 'MEMBER' ? 'Kuro22' : 'Admin User'}
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--accent-pink)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                        {userRole === 'ADMIN' ? 'SYS_OP' : 'MEMBER'}
+                      </span>
+                    </div>
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--text-muted)', marginLeft: '4px' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+
+                  {showProfileDropdown && (
+                    <div className="user-dropdown" onClick={() => setShowProfileDropdown(false)}>
+                      <button className="dropdown-item">👤 Profile</button>
+                      <button className="dropdown-item">🤍 Followed Manga ({bookmarkedIds.size})</button>
+                      <button className="dropdown-item">🕒 History</button>
+
+                      <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+                      <button
+                        className="dropdown-item admin-highlight"
+                        onClick={() => {
+                          if (userRole !== 'ADMIN') {
+                            showToast('Chỉ Quản trị viên (Admin) mới có quyền vào Dashboard!', 'error');
+                          } else {
+                            navigate('/admin');
+                          }
+                        }}
+                      >
+                        🎛️ Admin Dashboard &rsaquo;
+                      </button>
+
+                      <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+
+                      <button className="dropdown-item" onClick={() => handleRoleSwitch(userRole === 'ADMIN' ? 'GUEST' : 'ADMIN')}>
+                        🔄 Chuyển vai trò ({userRole === 'ADMIN' ? 'Thành Guest' : 'Thành Admin'})
+                      </button>
+
+                      <button className="dropdown-item" onClick={() => handleRoleSwitch('GUEST')}>
+                        🚪 Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </header>
-
-        {/* Content Body */}
-        <main className="content-body">
-          {error && (
-            <div style={{
-              padding: '16px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(239, 68, 68, 0.15)',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#f87171',
-              fontSize: '13px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span>⚠️ {error}</span>
-              <button onClick={fetchStoriesData} style={{ background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', cursor: 'pointer' }}>
-                Thử lại
-              </button>
-            </div>
-          )}
-
-          {/* VIEW 1: DASHBOARD */}
-          {activeNav === 'Dashboard' && (
-            <>
-              <div className="page-header">
-                <h2 className="page-title">Platform Overview</h2>
-                <p className="page-subtitle">Real-time metrics connected to Spring Boot API backend.</p>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="metrics-grid">
-                <div className="metric-card">
-                  <div className="metric-header">
-                    <span className="metric-title">TOTAL STORIES</span>
-                    <svg className="metric-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  </div>
-                  <div className="metric-value">{loading ? '...' : totalStoriesCount}</div>
-                  <div className="metric-trend up">
-                    <span>MongoDB</span>
-                    <span className="trend-period">live API</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="metric-header">
-                    <span className="metric-title">ACTIVE READERS</span>
-                    <svg className="metric-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div className="metric-value">45.2k</div>
-                  <div className="metric-trend up">
-                    <span>↑ 8.4%</span>
-                    <span className="trend-period">vs last week</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="metric-header">
-                    <span className="metric-title">TOTAL VIEWS</span>
-                    <svg className="metric-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  </div>
-                  <div className="metric-value">{loading ? '...' : formattedTotalViews}</div>
-                  <div className="metric-trend up">
-                    <span>Live Views</span>
-                    <span className="trend-period">total view count</span>
-                  </div>
-                </div>
-
-                <div className="metric-card">
-                  <div className="metric-header">
-                    <span className="metric-title">MONTHLY REVENUE</span>
-                    <svg className="metric-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  </div>
-                  <div className="metric-value">$12,400</div>
-                  <div className="metric-trend down">
-                    <span>↓ 2.1%</span>
-                    <span className="trend-period">vs last week</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dashboard Main Panels Grid */}
-              <div className="dashboard-grid">
-                <section className="panel-card">
-                  <div className="panel-header">
-                    <h3 className="panel-title">
-                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--accent-blue)' }}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Active Stories
-                    </h3>
-                    <button onClick={() => setActiveNav('Story Management')} className="view-all-btn" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                      Go to Management &rsaquo;
-                    </button>
-                  </div>
-
-                  <div className="table-container">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Cover</th>
-                          <th>Manga Title</th>
-                          <th>Status</th>
-                          <th>Views</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredStories.slice(0, 5).map((story) => (
-                          <tr key={story.id || story.slug}>
-                            <td>
-                              <img
-                                src={story.thumbUrl || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=100&auto=format&fit=crop&q=80'}
-                                alt={story.name}
-                                className="cover-img"
-                              />
-                            </td>
-                            <td className="manga-title">{story.name}</td>
-                            <td>
-                              <span className={`status-badge ${(story.status || 'ongoing').toLowerCase()}`}>
-                                {story.status || 'Ongoing'}
-                              </span>
-                            </td>
-                            <td>{story.viewCount ? story.viewCount.toLocaleString() : 0}</td>
-                            <td>
-                              <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => handleOpenEditStoryModal(story)}>
-                                Sửa
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  <section className="panel-card">
-                    <div className="panel-header">
-                      <h3 className="panel-title">Quick Chapter Upload</h3>
-                    </div>
-                    <button
-                      onClick={() => setActiveNav('Chapter Uploader')}
-                      className="btn-primary"
-                      style={{ width: '100%', padding: '12px' }}
-                    >
-                      + Chuyển Sang Trang Đăng Chapter
-                    </button>
-                  </section>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* VIEW 2: STORY MANAGEMENT */}
-          {activeNav === 'Story Management' && (
-            <>
-              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h2 className="page-title">Story Management</h2>
-                  <p className="page-subtitle">Quản lý danh sách bộ truyện (Thêm mới, Chỉnh sửa thông tin, Xóa bộ truyện).</p>
-                </div>
-
-                <button onClick={handleOpenAddStoryModal} className="btn-primary">
-                  + Thêm Truyện Mới
-                </button>
-              </div>
-
-              {/* Filters Bar */}
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ flex: 1, position: 'relative' }}>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Lọc theo tên truyện, tác giả, slug (Debounce 300ms)..."
-                  />
-                </div>
-
-                <select
-                  className="form-select"
-                  style={{ width: '180px' }}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">Tất cả trạng thái</option>
-                  <option value="ONGOING">Ongoing (Đang tiến hành)</option>
-                  <option value="COMPLETED">Completed (Hoàn thành)</option>
-                </select>
-              </div>
-
-              {/* Stories Table */}
-              <section className="panel-card">
-                <div className="table-container">
-                  {loading ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Đang tải danh sách bộ truyện từ API...
-                    </div>
-                  ) : filteredStories.length === 0 ? (
-                    <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      {debouncedSearchTerm ? 'Không tìm thấy bộ truyện nào khớp với từ khóa.' : 'Chưa có bộ truyện nào trong hệ thống.'}
-                    </div>
-                  ) : (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Ảnh bìa</th>
-                          <th>Tên Bộ Truyện</th>
-                          <th>Trạng thái</th>
-                          <th>Tác giả</th>
-                          <th>Thể loại</th>
-                          <th>Lượt xem</th>
-                          <th style={{ textAlign: 'right' }}>Thao tác</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredStories.map((story) => (
-                          <tr key={story.id || story.slug}>
-                            <td>
-                              <img
-                                src={story.thumbUrl || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=100&auto=format&fit=crop&q=80'}
-                                alt={story.name}
-                                className="cover-img"
-                              />
-                            </td>
-                            <td>
-                              <div className="manga-title">{story.name}</div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>slug: {story.slug}</div>
-                            </td>
-                            <td>
-                              <span className={`status-badge ${(story.status || 'ongoing').toLowerCase()}`}>
-                                {story.status || 'Ongoing'}
-                              </span>
-                            </td>
-                            <td>{story.author || 'Chưa rõ'}</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                                {story.categories?.map((cat, idx) => (
-                                  <span key={idx} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-card-hover)', color: 'var(--text-secondary)' }}>
-                                    {cat}
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td>{story.viewCount ? story.viewCount.toLocaleString() : 0}</td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                                <button
-                                  onClick={() => handleOpenEditStoryModal(story)}
-                                  className="btn-secondary"
-                                  style={{ padding: '6px 12px', fontSize: '12px' }}
-                                >
-                                  Sửa
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteStory(story)}
-                                  className="btn-danger"
-                                >
-                                  Xóa
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </section>
-            </>
-          )}
-
-          {/* VIEW 3: CHAPTER UPLOADER */}
-          {activeNav === 'Chapter Uploader' && (
-            <>
-              <div className="page-header">
-                <h2 className="page-title">Chapter Uploader</h2>
-                <p className="page-subtitle">Đăng chapter mới cho bộ truyện (Hỗ trợ URL danh sách ảnh hoặc chọn file từ máy tính).</p>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-                {/* Chapter Upload Form */}
-                <section className="panel-card">
-                  <h3 className="panel-title" style={{ marginBottom: '16px' }}>Thông tin Chapter Mới</h3>
-
-                  <form onSubmit={handleChapterUploadSubmit}>
-                    <div className="form-group">
-                      <label className="form-label">Chọn Bộ Truyện *</label>
-                      <select
-                        className={`form-select ${chapterFormErrors.storySlug ? 'error' : ''}`}
-                        value={chapterForm.storySlug}
-                        onChange={(e) => setChapterForm({ ...chapterForm, storySlug: e.target.value })}
-                      >
-                        <option value="">-- Chọn bộ truyện từ danh sách --</option>
-                        {stories.map((story) => (
-                          <option key={story.id || story.slug} value={story.slug}>
-                            {story.name} ({story.slug})
-                          </option>
-                        ))}
-                      </select>
-                      {chapterFormErrors.storySlug && <div className="form-error">{chapterFormErrors.storySlug}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Số / Tên Chapter *</label>
-                      <input
-                        type="text"
-                        className={`form-input ${chapterFormErrors.chapterName ? 'error' : ''}`}
-                        placeholder="VD: 1084 hoặc Chapter 1084"
-                        value={chapterForm.chapterName}
-                        onChange={(e) => setChapterForm({ ...chapterForm, chapterName: e.target.value })}
-                      />
-                      {chapterFormErrors.chapterName && <div className="form-error">{chapterFormErrors.chapterName}</div>}
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">Tiêu đề Chapter (Không bắt buộc)</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="VD: Sự thật về ngai vàng trống"
-                        value={chapterForm.chapterTitle}
-                        onChange={(e) => setChapterForm({ ...chapterForm, chapterTitle: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">URL API / Danh Sách Trang Ảnh</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="VD: https://api.mangacloud.net/images/chapter-1084"
-                        value={chapterForm.chapterApiUrl}
-                        onChange={(e) => setChapterForm({ ...chapterForm, chapterApiUrl: e.target.value })}
-                      />
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        Hoặc kéo thả file ảnh ở ô bên phải để xem trước.
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={chapterSubmitting}
-                      className="btn-primary"
-                      style={{ width: '100%', padding: '12px', marginTop: '12px' }}
-                    >
-                      {chapterSubmitting ? 'Đang Đăng Chapter...' : '🚀 Bấm Đăng Chapter Mới'}
-                    </button>
-                  </form>
-                </section>
-
-                {/* Local File Drag & Drop Zone */}
-                <section className="panel-card">
-                  <h3 className="panel-title" style={{ marginBottom: '16px' }}>Kéo Thả / Chọn Trang Ảnh (Local File Preview)</h3>
-
-                  <div
-                    className="upload-box"
-                    style={{ minHeight: '200px' }}
-                    onClick={() => document.getElementById('chapter-file-input').click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (e.dataTransfer.files) handleFileDrop(e.dataTransfer.files);
-                    }}
-                  >
-                    <input
-                      id="chapter-file-input"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files) handleFileDrop(e.target.files);
-                      }}
-                    />
-                    <div className="upload-icon">📸</div>
-                    <div className="upload-text">Click hoặc Kéo thả ảnh trang truyện vào đây</div>
-                    <div className="upload-subtext">Hỗ trợ định dạng .png, .jpg, .webp</div>
-                  </div>
-
-                  {chapterFiles.length > 0 && (
-                    <div style={{ marginTop: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-                        <span>Đã chọn <strong>{chapterFiles.length} trang ảnh</strong></span>
-                        <button
-                          onClick={() => setChapterFiles([])}
-                          style={{ background: 'none', border: 'none', color: 'var(--trend-down)', cursor: 'pointer', fontSize: '12px' }}
-                        >
-                          Xóa tất cả
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
-                        {chapterFiles.map((file, idx) => (
-                          <div key={idx} style={{ position: 'relative', width: '60px', height: '80px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)', flexShrink: 0 }}>
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={file.name}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: '#fff', fontSize: '10px', textAlign: 'center' }}>
-                              #{idx + 1}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
-            </>
-          )}
-        </main>
       </div>
 
-      {/* STORY MODAL (ADD / EDIT) */}
-      {showStoryModal && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h3 className="modal-title">{editingStory ? 'Chỉnh Sửa Bộ Truyện' : 'Thêm Mới Bộ Truyện'}</h3>
-            <p className="modal-subtitle">Điền thông tin bộ truyện để cập nhật vào MongoDB Backend API.</p>
+      {/* 2. SECONDARY SUB-HEADER NAVBAR MENU */}
+      <nav className="sub-navbar">
+        <div className="sub-navbar-container">
+          <a
+            href="/"
+            className={`sub-nav-item ${routePath === '/' ? 'active' : ''}`}
+            onClick={(e) => { e.preventDefault(); navigate('/'); }}
+          >
+            Truyện mới
+          </a>
 
-            <form onSubmit={handleStoryFormSubmit}>
-              <div className="form-group">
-                <label className="form-label">Tên Bộ Truyện *</label>
-                <input
-                  type="text"
-                  className={`form-input ${storyFormErrors.name ? 'error' : ''}`}
-                  placeholder="VD: One Piece"
-                  value={storyForm.name}
-                  onChange={(e) => setStoryForm({ ...storyForm, name: e.target.value })}
-                />
-                {storyFormErrors.name && <div className="form-error">{storyFormErrors.name}</div>}
-              </div>
+          <div className="category-menu-container">
+            <div
+              className="sub-nav-item"
+              onClick={() => setShowCategoryPopover(!showCategoryPopover)}
+            >
+              Thể loại ▾
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Tên Gọi Khác / Tên Gốc (Phân cách bởi dấu phẩy)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="VD: Đảo Hải Tặc, Vua Hải Tặc"
-                  value={storyForm.originNameStr}
-                  onChange={(e) => setStoryForm({ ...storyForm, originNameStr: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Tác Giả</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="VD: Eiichiro Oda"
-                    value={storyForm.author}
-                    onChange={(e) => setStoryForm({ ...storyForm, author: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Trạng Thái</label>
-                  <select
-                    className="form-select"
-                    value={storyForm.status}
-                    onChange={(e) => setStoryForm({ ...storyForm, status: e.target.value })}
-                  >
-                    <option value="Ongoing">Ongoing (Đang tiến hành)</option>
-                    <option value="Completed">Completed (Hoàn thành)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Thể Loại (Phân cách bởi dấu phẩy)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="VD: Action, Adventure, Shounen, Fantasy"
-                  value={storyForm.categoriesStr}
-                  onChange={(e) => setStoryForm({ ...storyForm, categoriesStr: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">URL Ảnh Bìa (Thumb URL)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="https://..."
-                  value={storyForm.thumbUrl}
-                  onChange={(e) => setStoryForm({ ...storyForm, thumbUrl: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Mô Tả Tóm Tắt</label>
-                <textarea
-                  className="form-textarea"
-                  rows="3"
-                  placeholder="Nhập nội dung tóm tắt bộ truyện..."
-                  value={storyForm.summary}
-                  onChange={(e) => setStoryForm({ ...storyForm, summary: e.target.value })}
-                ></textarea>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowStoryModal(false)}
-                  className="btn-secondary"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={formSubmitting}
-                  className="btn-primary"
-                >
-                  {formSubmitting ? 'Đang Lưu...' : editingStory ? 'Lưu Thay Đổi' : 'Tạo Truyện Mới'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* LOGIN MODAL */}
-      {showLoginModal && (
-        <div className="modal-overlay">
-          <div className="modal-card" style={{ width: '380px' }}>
-            <h3 className="modal-title">Đăng Nhập Backend API</h3>
-            <p className="modal-subtitle">Nhập tài khoản & mật khẩu để nhận Token JWT.</p>
-
-            {loginError && (
-              <div style={{ padding: '10px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', fontSize: '12px', marginBottom: '16px' }}>
-                {loginError}
+            {showCategoryPopover && (
+              <div className="category-dropdown-popover" onClick={() => setShowCategoryPopover(false)}>
+                {CATEGORIES_LIST.map((cat) => (
+                  <div key={cat} className="category-tag-btn">
+                    {cat}
+                  </div>
+                ))}
               </div>
             )}
+          </div>
 
-            <form onSubmit={handleLoginSubmit}>
-              <div className="form-group">
-                <label className="form-label">Username hoặc Email</label>
-                <input
-                  type="text"
-                  required
-                  value={loginForm.usernameOrEmail}
-                  onChange={(e) => setLoginForm({ ...loginForm, usernameOrEmail: e.target.value })}
-                  placeholder="tho1 hoặc email@example.com"
-                  className="form-input"
-                />
+          <a href="#full" className="sub-nav-item" onClick={(e) => e.preventDefault()}>
+            Truyện Full
+          </a>
+          <a href="#hot" className="sub-nav-item" onClick={(e) => e.preventDefault()}>
+            Truyện Hot
+          </a>
+          <a href="#long" className="sub-nav-item" onClick={(e) => e.preventDefault()}>
+            Truyện Dài
+          </a>
+          <a href="#creative" className="sub-nav-item" onClick={(e) => e.preventDefault()}>
+            Truyện Sáng Tác
+          </a>
+          <a href="#authors" className="sub-nav-item" onClick={(e) => e.preventDefault()}>
+            Tác giả/Dịch giả
+          </a>
+        </div>
+      </nav>
+
+      {/* 3. MAIN CONTENT CONTAINER (FULL WIDTH 1280PX CENTERED) */}
+      <main className="main-container">
+        {/* ROUTE 1: HOMEPAGE ('/') */}
+        {routePath === '/' && (
+          <>
+            {/* Announcement Notice Alert Box */}
+            <div className="notice-alert-box">
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <span style={{ fontSize: '20px' }}>🔔</span>
+                <div>
+                  <strong style={{ fontSize: '14px', display: 'block', marginBottom: '2px' }}>Thông báo</strong>
+                  <strong>MangaCloud xin trân trọng thông báo:</strong><br />
+                  Nhằm mang tới trải nghiệm đọc truyện tuyệt vời nhất, MangaCloud hỗ trợ đọc mượt mà trên mọi thiết bị. Rất mong các team dịch và quý độc giả ủng hộ!
+                </div>
               </div>
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Mật khẩu</label>
-                <input
-                  type="password"
-                  required
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="form-input"
-                />
-              </div>
+            {/* SECTION 1: ĐỀ CỬ HÔM NAY (ZERO WASTED SPACE SHOWCASE) */}
+            <div className="section-header">
+              <h2 className="section-title">📌 ĐỀ CỬ HÔM NAY</h2>
+            </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginModal(false)}
-                  className="btn-secondary"
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+              {stories.slice(0, 2).map((s) => (
+                <div
+                  key={s.id}
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '16px',
+                    padding: '20px',
+                    display: 'flex',
+                    gap: '18px',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                  onClick={() => navigate(`/story/${s.slug}`)}
                 >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={formSubmitting}
-                  className="btn-primary"
-                >
-                  {formSubmitting ? 'Đang xử lý...' : 'Đăng nhập'}
-                </button>
+                  <img
+                    src={sanitizeThumbUrl(s.thumbUrl)}
+                    alt={s.name}
+                    style={{ width: '120px', height: '160px', objectFit: 'cover', borderRadius: '10px', flexShrink: 0 }}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1 }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--accent-pink)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                        {s.categories ? s.categories.join(' • ') : 'HOT SHOWCASE'}
+                      </div>
+                      <h3 style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', lineHeight: 1.3 }}>
+                        {s.name}
+                      </h3>
+                      <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {s.summary}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        👤 <strong>{s.author}</strong> | 👁️ {(s.viewCount / 1000).toFixed(0)}k
+                      </div>
+                      <button
+                        className="btn-primary"
+                        style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '20px' }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/read/${s.slug}/1`); }}
+                      >
+                        📖 Đọc ngay
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* SECTION 2: TRUYỆN HOT THÁNG NÀY (LƯỚI 6 CỘT TỰ ĐỘNG LẤP ĐẦY) */}
+            <div className="section-header">
+              <h3 className="section-title">💖 TRUYỆN HOT THÁNG NÀY</h3>
+            </div>
+            <div className="manga-grid-6">
+              {topViewStories.map((story, idx) => {
+                const isBookmarked = bookmarkedIds.has(story.id);
+                return (
+                  <div key={story.id || idx} className="manga-card" onClick={() => navigate(`/story/${story.slug}`)}>
+                    <div className="manga-cover-wrapper">
+                      {/* Left Badges: Relative Time & HOT Tag */}
+                      <div className="cover-badges-left">
+                        <span className="manga-time-badge">🕒 {story.updatedTime || '10p trước'}</span>
+                        {(story.isHot || idx < 3) && <span className="manga-hot-badge">HOT</span>}
+                      </div>
+
+                      {/* Right Interactive Bookmark Button */}
+                      <button
+                        className={`bookmark-btn ${isBookmarked ? 'active' : ''}`}
+                        title={isBookmarked ? 'Bỏ theo dõi' : 'Thêm vào Theo Dõi'}
+                        onClick={(e) => toggleBookmark(story.id, story.name, e)}
+                      >
+                        {isBookmarked ? '❤️' : '🤍'}
+                      </button>
+
+                      <img
+                        src={sanitizeThumbUrl(story.thumbUrl)}
+                        alt={story.name}
+                        className="manga-cover-img"
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+                      />
+                    </div>
+
+                    {/* Manga Card Info: Bold Story Title (2 lines) & Meta Row */}
+                    <div className="manga-card-info">
+                      <div className="manga-card-title">{story.name}</div>
+                      <div className="manga-card-meta">
+                        <span className="manga-chapter-text">{story.latestChapter || 'Ch. 1'}</span>
+                        <span className="manga-author-text">👤 {story.author || 'MangaCloud'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SECTION 3: ĐỘC QUYỀN MANGA CLOUD */}
+            <div className="section-header">
+              <h3 className="section-title">📕 ĐỘC QUYỀN MANGA CLOUD</h3>
+            </div>
+            <div className="manga-grid-6">
+              {featuredStories.map((story, idx) => {
+                const isBookmarked = bookmarkedIds.has(story.id);
+                return (
+                  <div key={story.id || idx} className="manga-card" onClick={() => navigate(`/story/${story.slug}`)}>
+                    <div className="manga-cover-wrapper">
+                      <div className="cover-badges-left">
+                        <span className="manga-time-badge">🕒 {story.updatedTime || '15p trước'}</span>
+                        <span className="manga-hot-badge">HOT</span>
+                      </div>
+
+                      <button
+                        className={`bookmark-btn ${isBookmarked ? 'active' : ''}`}
+                        title={isBookmarked ? 'Bỏ theo dõi' : 'Thêm vào Theo Dõi'}
+                        onClick={(e) => toggleBookmark(story.id, story.name, e)}
+                      >
+                        {isBookmarked ? '❤️' : '🤍'}
+                      </button>
+
+                      <img
+                        src={sanitizeThumbUrl(story.thumbUrl)}
+                        alt={story.name}
+                        className="manga-cover-img"
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+                      />
+                    </div>
+
+                    <div className="manga-card-info">
+                      <div className="manga-card-title">{story.name}</div>
+                      <div className="manga-card-meta">
+                        <span className="manga-chapter-text">{story.latestChapter || 'Ch. 1'}</span>
+                        <span className="manga-author-text">👤 {story.author || 'MangaCloud'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SECTION 4: DANH SÁCH TRUYỆN TRANH MỚI CẬP NHẬT */}
+            <div className="section-header">
+              <h3 className="section-title">☁️ DANH SÁCH TRUYỆN TRANH MỚI CẬP NHẬT</h3>
+            </div>
+            <div className="manga-grid-6">
+              {latestStories.map((story, idx) => {
+                const isBookmarked = bookmarkedIds.has(story.id);
+                return (
+                  <div key={story.id || idx} className="manga-card" onClick={() => navigate(`/story/${story.slug}`)}>
+                    <div className="manga-cover-wrapper">
+                      <div className="cover-badges-left">
+                        <span className="manga-time-badge">🕒 {story.updatedTime || 'vừa xong'}</span>
+                      </div>
+
+                      <button
+                        className={`bookmark-btn ${isBookmarked ? 'active' : ''}`}
+                        title={isBookmarked ? 'Bỏ theo dõi' : 'Thêm vào Theo Dõi'}
+                        onClick={(e) => toggleBookmark(story.id, story.name, e)}
+                      >
+                        {isBookmarked ? '❤️' : '🤍'}
+                      </button>
+
+                      <img
+                        src={sanitizeThumbUrl(story.thumbUrl)}
+                        alt={story.name}
+                        className="manga-cover-img"
+                        onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+                      />
+                    </div>
+
+                    <div className="manga-card-info">
+                      <div className="manga-card-title">{story.name}</div>
+                      <div className="manga-card-meta">
+                        <span className="manga-chapter-text">{story.latestChapter || 'Ch. 1'}</span>
+                        <span className="manga-author-text">👤 {story.author || 'MangaCloud'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* LOAD MORE BUTTON */}
+            <div className="load-more-container">
+              <button
+                className="btn-load-more"
+                onClick={() => {
+                  setDisplayCount(prev => prev + 6);
+                  showToast('Đã tải thêm danh sách truyện mới!');
+                }}
+              >
+                Xem thêm nhiều truyện
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ROUTE 2: MANGA DETAIL VIEW ('/story/:slug') */}
+        {routePath.startsWith('/story/') && selectedStory && (
+          <div className="detail-container">
+            <div>
+              <img
+                src={sanitizeThumbUrl(selectedStory.thumbUrl)}
+                alt={selectedStory.name}
+                className="detail-cover"
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+              />
+              <button
+                className="btn-primary"
+                style={{ width: '100%', marginTop: '16px', padding: '12px' }}
+                onClick={() => navigate(`/read/${selectedStory.slug}/1`)}
+              >
+                📖 Đọc Từ Chapter 1
+              </button>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--accent-pink)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>
+                {selectedStory.categories ? selectedStory.categories.join(' • ') : 'Manga'}
               </div>
-            </form>
+              <h1 style={{ fontSize: '32px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                {selectedStory.name}
+              </h1>
+              <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Tác giả: <strong>{selectedStory.author || 'Chưa rõ'}</strong> | Trạng thái: <span className="status-badge ongoing">{selectedStory.status || 'Ongoing'}</span>
+              </div>
+              <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
+                {selectedStory.summary || 'Bộ truyện chưa có mô tả tóm tắt.'}
+              </p>
+
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Danh Sách Chapter</h3>
+              <div className="chapter-list-grid">
+                {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((ch) => (
+                  <button
+                    key={ch}
+                    className="chapter-item-btn"
+                    onClick={() => navigate(`/read/${selectedStory.slug}/${ch}`)}
+                  >
+                    Chapter {ch}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ROUTE 3: CHAPTER READER SCREEN ('/read/:storySlug/:chapterName') */}
+        {routePath.startsWith('/read/') && (
+          <div className="reader-container">
+            <div className="reader-header">
+              <button className="btn-secondary" onClick={() => navigate(selectedStory ? `/story/${selectedStory.slug}` : '/')}>
+                &lsaquo; Quay lại truyện
+              </button>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                {selectedStory ? selectedStory.name : 'Đang đọc'} - Chapter {selectedChapter || '1'}
+              </div>
+              <button className="btn-primary" onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) + 1}`)}>
+                Chapter tiếp &rsaquo;
+              </button>
+            </div>
+
+            <div className="reader-pages">
+              <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 1" />
+              <img src="https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 2" />
+              <img src="https://images.unsplash.com/photo-1534447677768-be436bb09401?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 3" />
+            </div>
+          </div>
+        )}
+
+        {/* ROUTE 4: ADMIN DASHBOARD ('/admin') */}
+        {routePath === '/admin' && (
+          <div>
+            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 className="page-title">🎛️ MangaCloud Admin Dashboard</h2>
+                <p className="page-subtitle">Quản trị hạ tầng, CRUD bộ truyện & Upload Chapter (ROLE_ADMIN).</p>
+              </div>
+              <button className="btn-secondary" onClick={() => navigate('/')}>
+                &lsaquo; Về Trang Chủ
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+              <button
+                className={`btn-${adminActiveNav === 'Dashboard' ? 'primary' : 'secondary'}`}
+                onClick={() => setAdminActiveNav('Dashboard')}
+              >
+                Overview
+              </button>
+              <button
+                className={`btn-${adminActiveNav === 'Story Management' ? 'primary' : 'secondary'}`}
+                onClick={() => setAdminActiveNav('Story Management')}
+              >
+                Story Management
+              </button>
+              <button
+                className={`btn-${adminActiveNav === 'Chapter Uploader' ? 'primary' : 'secondary'}`}
+                onClick={() => setAdminActiveNav('Chapter Uploader')}
+              >
+                Chapter Uploader
+              </button>
+            </div>
+
+            <section className="panel-card">
+              <div className="table-container">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Cover</th>
+                      <th>Tên Truyện</th>
+                      <th>Status</th>
+                      <th>Slug</th>
+                      <th>Views</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stories.map((story) => (
+                      <tr key={story.id || story.slug}>
+                        <td><img src={sanitizeThumbUrl(story.thumbUrl)} className="cover-img" alt={story.name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }} /></td>
+                        <td><strong style={{ color: 'var(--text-primary)' }}>{story.name}</strong></td>
+                        <td><span className="status-badge ongoing">{story.status || 'Ongoing'}</span></td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{story.slug}</td>
+                        <td>{story.viewCount ? story.viewCount.toLocaleString() : 0}</td>
+                        <td>
+                          <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => alert('Sửa truyện: ' + story.name)}>
+                            Sửa
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        )}
+      </main>
+
+      {/* 4. SITE FOOTER */}
+      <footer className="site-footer">
+        <div className="footer-container">
+          <div className="footer-grid">
+            <div>
+              <div className="header-brand" style={{ marginBottom: '12px' }}>
+                <div className="brand-logo-card">🌸</div>
+                <div className="brand-name">MangaCloud</div>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '320px' }}>
+                MangaCloud - Ổ Truyện Soft Pink Theme. Nền tảng đọc truyện tranh vietsub bản quyền cao cấp nhẹ nhàng dịu mắt.
+              </p>
+            </div>
+
+            <div>
+              <div className="footer-col-title">Điều Hướng</div>
+              <ul className="footer-links-list">
+                <li><a href="/" className="footer-link" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Truyện mới</a></li>
+                <li><a href="#categories" className="footer-link">Thể loại</a></li>
+                <li><a href="#rankings" className="footer-link">Truyện Hot</a></li>
+                <li><a href="#new" className="footer-link">Truyện Full</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="footer-col-title">Thể Loại Hot</div>
+              <ul className="footer-links-list">
+                <li><a href="#romance" className="footer-link">Romance</a></li>
+                <li><a href="#fantasy" className="footer-link">Fantasy</a></li>
+                <li><a href="#drama" className="footer-link">Drama</a></li>
+                <li><a href="#manhwa" className="footer-link">Manhwa</a></li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="footer-col-title">Cộng Đồng & Hỗ Trợ</div>
+              <ul className="footer-links-list">
+                <li><a href="https://discord.com" target="_blank" rel="noreferrer" className="footer-link">Discord Server</a></li>
+                <li><a href="https://github.com" target="_blank" rel="noreferrer" className="footer-link">GitHub Repository</a></li>
+                <li><a href="#terms" className="footer-link">Điều khoản dịch vụ</a></li>
+                <li><a href="#privacy" className="footer-link">Chính sách bảo mật</a></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="footer-bottom">
+            © 2026 MangaCloud. Premium Manga & Comic Reader. All rights reserved.
           </div>
         </div>
-      )}
+      </footer>
     </div>
   );
 }
