@@ -59,15 +59,22 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
     @Override
     public Story importStoryBySlug(String slug) throws Exception {
         return importStoryInternal(slug);
+    }    @Async
+    @Override
+    public void importBatchStoriesAsync(int pages) {
+        importBatchStoriesAsync(1, pages);
     }
 
     @Async
     @Override
-    public void importBatchStoriesAsync(int pages) {
+    public void importBatchStoriesAsync(int startPage, int endPage) {
         int totalStoriesImported = 0;
-        int maxPages = Math.min(pages, 10);
+        int fromPage = Math.max(1, startPage);
+        int toPage = Math.max(fromPage, endPage);
 
-        for (int page = 1; page <= maxPages; page++) {
+        System.out.println("🚀 [Async Worker] Bắt đầu cào dữ liệu từ Trang " + fromPage + " đến Trang " + toPage + " từ Otruyen API...");
+
+        for (int page = fromPage; page <= toPage; page++) {
             String catalogUrl = otruyenApiBaseUrl + "danh-sach/truyen-moi?page=" + page;
             String catalogJson = fetchJson(catalogUrl);
             if (catalogJson != null) {
@@ -127,7 +134,6 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
 
                                     storyRepository.save(storyEntity);
                                     totalStoriesImported++;
-
                                 } catch (Exception e) {
                                     System.err.println("Lỗi cào batch item " + slug + ": " + e.getMessage());
                                 }
@@ -139,6 +145,7 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
                 }
             }
         }
+        System.out.println("✅ [Async Worker] Hoàn tất cào từ Trang " + fromPage + " đến Trang " + toPage + "! Tổng bộ truyện: " + totalStoriesImported);
     }
 
     private Story importStoryInternal(String slug) throws Exception {
@@ -157,9 +164,23 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
         String rawStatus = itemNode.path("status").asText();
         String status = "completed".equalsIgnoreCase(rawStatus) ? "Completed" : ("coming_soon".equalsIgnoreCase(rawStatus) ? "Upcoming" : "Ongoing");
 
-        String author = "MangaCloud";
+        String author = "Đang cập nhật";
         if (itemNode.path("author").isArray() && itemNode.path("author").size() > 0) {
-            author = itemNode.path("author").get(0).asText();
+            List<String> authorsList = new ArrayList<>();
+            for (JsonNode aNode : itemNode.path("author")) {
+                String aStr = aNode.asText().trim();
+                if (!aStr.isEmpty() && !"Updating".equalsIgnoreCase(aStr) && !"MangaCloud".equalsIgnoreCase(aStr)) {
+                    authorsList.add(aStr);
+                }
+            }
+            if (!authorsList.isEmpty()) {
+                author = String.join(", ", authorsList);
+            }
+        } else if (itemNode.path("author").isTextual()) {
+            String aStr = itemNode.path("author").asText().trim();
+            if (!aStr.isEmpty() && !"Updating".equalsIgnoreCase(aStr) && !"MangaCloud".equalsIgnoreCase(aStr)) {
+                author = aStr;
+            }
         }
 
         List<String> categories = new ArrayList<>();
@@ -215,46 +236,22 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
 
         storyRepository.save(storyEntity);
 
-        // Save Chapter records to Mongo
+        // Save Chapter records to Mongo (Instant Lazy Fetching pattern)
+        List<Chapter> chaptersToSave = new ArrayList<>();
         for (ChapterData chData : chapterListToImport) {
-            try {
-                List<String> pageUrls = new ArrayList<>();
-                if (chData.shouldFetchPages && !chData.chapterApiUrl.isEmpty()) {
-                    String chJsonResponse = fetchJson(chData.chapterApiUrl);
-                    if (chJsonResponse != null) {
-                        JsonNode chRootNode = objectMapper.readTree(chJsonResponse);
-                        JsonNode chItemNode = chRootNode.path("data").path("item");
-                        String domainCdn = chRootNode.path("data").path("domain_cdn").asText("https://sv1.otruyencdn.com");
-                        String chapterPath = chItemNode.path("chapter_path").asText();
+            Optional<Chapter> existingCh = chapterRepository.findByStorySlugAndChapterName(storySlug, chData.chName);
+            Chapter chapterEntity = existingCh.orElseGet(() -> Chapter.builder()
+                    .storySlug(storySlug)
+                    .chapterName(chData.chName)
+                    .updatedAt(LocalDateTime.now())
+                    .build());
 
-                        JsonNode imagesNode = chItemNode.path("chapter_image");
-                        if (imagesNode.isArray()) {
-                            for (JsonNode imgNode : imagesNode) {
-                                String imgFile = imgNode.path("image_file").asText();
-                                if (!imgFile.isEmpty()) {
-                                    pageUrls.add(domainCdn + "/" + chapterPath + "/" + imgFile);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Optional<Chapter> existingCh = chapterRepository.findByStorySlugAndChapterName(storySlug, chData.chName);
-                Chapter chapterEntity = existingCh.orElseGet(() -> Chapter.builder()
-                        .storySlug(storySlug)
-                        .chapterName(chData.chName)
-                        .updatedAt(LocalDateTime.now())
-                        .build());
-
-                chapterEntity.setChapterTitle(chData.chTitle);
-                chapterEntity.setChapterApiUrl(chData.chapterApiUrl);
-                if (!pageUrls.isEmpty()) {
-                    chapterEntity.setPages(pageUrls);
-                }
-                chapterRepository.save(chapterEntity);
-            } catch (Exception e) {
-                System.err.println("Lỗi khi lưu chapter " + chData.chName + " cho slug " + storySlug + ": " + e.getMessage());
-            }
+            chapterEntity.setChapterTitle(chData.chTitle);
+            chapterEntity.setChapterApiUrl(chData.chapterApiUrl);
+            chaptersToSave.add(chapterEntity);
+        }
+        if (!chaptersToSave.isEmpty()) {
+            chapterRepository.saveAll(chaptersToSave);
         }
 
         return storyEntity;

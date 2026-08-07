@@ -17,14 +17,21 @@ public class OtruyenImportController {
     private final OtruyenImportService otruyenImportService;
 
     @PostMapping("/batch")
-    public ResponseEntity<Map<String, Object>> importBatchStories(@RequestParam(defaultValue = "3") int pages) {
+    public ResponseEntity<Map<String, Object>> importBatchStories(
+            @RequestParam(required = false) Integer startPage,
+            @RequestParam(required = false) Integer endPage,
+            @RequestParam(defaultValue = "5") int pages) {
         Map<String, Object> response = new HashMap<>();
 
-        // Kích hoạt tiến trình ngầm qua Spring AOP Proxy
-        otruyenImportService.importBatchStoriesAsync(pages);
+        int from = (startPage != null && startPage > 0) ? startPage : 1;
+        int to = (endPage != null && endPage >= from) ? endPage : (startPage != null ? startPage : pages);
 
+        // Kích hoạt tiến trình ngầm qua Spring AOP Proxy
+        otruyenImportService.importBatchStoriesAsync(from, to);
+
+        int totalExpected = (to - from + 1) * 24;
         response.put("success", true);
-        response.put("message", "Đã khởi chạy tiến trình cào dữ liệu ngầm cho " + pages + " trang! Truyện sẽ tự động đổ về Database trong ít phút.");
+        response.put("message", "🚀 Đã khởi chạy cào ngầm từ Trang " + from + " đến Trang " + to + " (~" + totalExpected + " bộ truyện)! Truyện đang tự động nạp vào Database.");
         return ResponseEntity.ok(response);
     }
 
