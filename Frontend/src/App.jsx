@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './services/api';
+import AdminDashboard from './components/AdminDashboard';
 import './index.css';
 
 const DEFAULT_COVER_IMAGE = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80';
@@ -12,170 +13,7 @@ const CATEGORIES_LIST = [
   'Slice of Life', 'Supernatural', 'Thriller'
 ];
 
-// Mockdata items for Homepage Banner & Grid Seeding (12 Rich Items)
-const INITIAL_MOCK_STORIES = [
-  {
-    id: 's1',
-    name: 'Vô Tình Lệch Khỏi Quỹ Đạo',
-    slug: 'vo-tinh-lech-khoi-quy-dao',
-    thumbUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
-    author: 'Diệu Linh',
-    categories: ['Romance', 'Drama'],
-    status: 'Ongoing',
-    summary: 'Tôi ở bên vị đại lão giới thượng lưu Hồng Kông suốt ba năm, đến đúng ngày anh đính hôn thì tôi quyết định cắt đứt quan hệ và rời đi...',
-    viewCount: 1250000,
-    updatedTime: '10 phút trước',
-    latestChapter: 'Ch. 124',
-    isHot: true
-  },
-  {
-    id: 's2',
-    name: 'Bạn Cùng Phòng Là Người Thực Vật',
-    slug: 'ban-cung-phong-la-nguoi-thuc-vat',
-    thumbUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=80',
-    author: 'An An',
-    categories: ['Supernatural', 'Romance'],
-    status: 'Ongoing',
-    summary: 'Tôi lại bắt đầu đi quấy rầy anh bạn cùng phòng là người thực vật. Lải nhải bên tai anh ấy về những bí mật không ai biết...',
-    viewCount: 980000,
-    updatedTime: '30 phút trước',
-    latestChapter: 'Ch. 45',
-    isHot: true
-  },
-  {
-    id: 's3',
-    name: 'Monolith Protocol',
-    slug: 'monolith-protocol',
-    thumbUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80',
-    author: 'DevGod',
-    categories: ['Mystery', 'Thriller'],
-    status: 'Completed',
-    summary: 'Deep inside the ancient server ruins, an archaic protocol awakens to judge humanity.',
-    viewCount: 840000,
-    updatedTime: '1 giờ trước',
-    latestChapter: 'Ch. 180',
-    isHot: true
-  },
-  {
-    id: 's4',
-    name: 'Hạ Giới Lãng Mạn',
-    slug: 'ha-gioi-lang-man',
-    thumbUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80',
-    author: 'Hạ Vy',
-    categories: ['Romance', 'Fantasy'],
-    status: 'Ongoing',
-    summary: 'Chuyện tình lãng mạn giữa thế giới thần tiên và trần thế khi định mệnh đan xen.',
-    viewCount: 750000,
-    updatedTime: '2 giờ trước',
-    latestChapter: 'Ch. 42'
-  },
-  {
-    id: 's5',
-    name: 'Anh Và Cố Nhân',
-    slug: 'anh-va-co-nhan',
-    thumbUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-    author: 'Phương Thảo',
-    categories: ['Drama', 'Romance'],
-    status: 'Ongoing',
-    summary: 'Những ký ức xưa cũ trỗi dậy giữa hai con người từng thương nhưng vì hiểu lầm mà xa cách.',
-    viewCount: 690000,
-    updatedTime: '4 giờ trước',
-    latestChapter: 'Ch. 108'
-  },
-  {
-    id: 's6',
-    name: 'Midnight Brew',
-    slug: 'midnight-brew',
-    thumbUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=80',
-    author: 'CoffeeBean',
-    categories: ['Slice of Life', 'Supernatural'],
-    status: 'Ongoing',
-    summary: 'A cozy coffee shop that opens only at midnight for supernatural beings seeking warmth.',
-    viewCount: 520000,
-    updatedTime: '5 giờ trước',
-    latestChapter: 'Ch. 15'
-  },
-  {
-    id: 's7',
-    name: 'Framework Zero',
-    slug: 'framework-zero',
-    thumbUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80',
-    author: 'ReactNinja',
-    categories: ['Action', 'Sci-Fi'],
-    status: 'Ongoing',
-    summary: 'The ultimate virtual reality tournament where warriors build custom combat modules.',
-    viewCount: 480000,
-    updatedTime: '8 giờ trước',
-    latestChapter: 'Ch. 88'
-  },
-  {
-    id: 's8',
-    name: 'Cloud Native',
-    slug: 'cloud-native',
-    thumbUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop&q=80',
-    author: 'SkyWalker',
-    categories: ['Adventure', 'Fantasy'],
-    status: 'Ongoing',
-    summary: 'Island kingdoms floating in the troposphere wage war over cloud water crystals.',
-    viewCount: 410000,
-    updatedTime: '12 giờ trước',
-    latestChapter: 'Ch. 3'
-  },
-  {
-    id: 's9',
-    name: 'Null Pointer',
-    slug: 'null-pointer',
-    thumbUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=500&auto=format&fit=crop&q=80',
-    author: 'SegFault',
-    categories: ['Horror', 'Psychological'],
-    status: 'Completed',
-    summary: 'Memory leaks in human consciousness cause people to forget their own identity.',
-    viewCount: 390000,
-    updatedTime: '1 ngày trước',
-    latestChapter: 'Vol. 4'
-  },
-  {
-    id: 's10',
-    name: 'Đảo Hải Tặc (One Piece)',
-    slug: 'one-piece',
-    thumbUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500&auto=format&fit=crop&q=80',
-    author: 'Eiichiro Oda',
-    categories: ['Action', 'Adventure'],
-    status: 'Ongoing',
-    summary: 'Hành trình tìm kiếm kho báu One Piece của thuyền trưởng Monkey D. Luffy và đồng đội!',
-    viewCount: 45000000,
-    updatedTime: '1 ngày trước',
-    latestChapter: 'Ch. 1104',
-    isHot: true
-  },
-  {
-    id: 's11',
-    name: 'Solo Leveling (Tôi Thăng Cấp Một Mình)',
-    slug: 'solo-leveling',
-    thumbUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=500&auto=format&fit=crop&q=80',
-    author: 'Chugong',
-    categories: ['Action', 'Fantasy'],
-    status: 'Completed',
-    summary: 'Hành trình thợ săn yếu nhất Hạng E Sung Jin-Woo trở thành Thần Thợ Săn đỉnh phong.',
-    viewCount: 28000000,
-    updatedTime: '2 ngày trước',
-    latestChapter: 'Ch. 179',
-    isHot: true
-  },
-  {
-    id: 's12',
-    name: 'Monster (Quái Vật)',
-    slug: 'monster',
-    thumbUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80',
-    author: 'Naoki Urasawa',
-    categories: ['Mystery', 'Thriller'],
-    status: 'Completed',
-    summary: 'Bác sĩ Tenma truy tìm sự thật kinh hoàng đằng sau Johan Liebert.',
-    viewCount: 8200000,
-    updatedTime: '3 ngày trước',
-    latestChapter: 'Ch. 162'
-  }
-];
+
 
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('mangacloud_theme') || 'light');
@@ -372,6 +210,81 @@ export default function App() {
     }
   };
 
+  // Reader & Comment State
+  const [chapterDetail, setChapterDetail] = useState(null);
+  const [chapterLoading, setChapterLoading] = useState(false);
+  const [storyChaptersList, setStoryChaptersList] = useState([]);
+  const [chapterComments, setChapterComments] = useState([]);
+  const [newCommentInput, setNewCommentInput] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+
+  // Load Chapter List & Detail when route changes
+  useEffect(() => {
+    if (routePath.startsWith('/story/')) {
+      const slug = routePath.replace('/story/', '');
+      loadStoryChapters(slug);
+    } else if (routePath.startsWith('/read/')) {
+      const parts = routePath.replace('/read/', '').split('/');
+      const slug = parts[0];
+      const chNum = parts[1] || '1';
+      loadStoryChapters(slug);
+      loadChapterContentAndComments(slug, chNum);
+    }
+  }, [routePath]);
+
+  const loadStoryChapters = async (slug) => {
+    try {
+      const chapters = await api.getChaptersByStory(slug);
+      setStoryChaptersList(Array.isArray(chapters) ? chapters : []);
+    } catch (err) {
+      setStoryChaptersList([]);
+    }
+  };
+
+  const loadChapterContentAndComments = async (slug, chNum) => {
+    setChapterLoading(true);
+    try {
+      const chData = await api.getChapterDetail(slug, chNum);
+      setChapterDetail(chData);
+      const comments = await api.getCommentsByChapter(slug, chNum);
+      setChapterComments(Array.isArray(comments) ? comments : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setChapterLoading(false);
+    }
+  };
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newCommentInput.trim()) return;
+    if (userRole === 'GUEST') {
+      openAuth('login');
+      return;
+    }
+
+    setCommentSubmitting(true);
+    try {
+      const slug = routePath.replace('/read/', '').split('/')[0];
+      const chNum = routePath.replace('/read/', '').split('/')[1] || '1';
+
+      await api.createComment({
+        storySlug: slug,
+        chapter: `Ch. ${chNum}`,
+        content: newCommentInput,
+        username: user?.username || 'Member'
+      });
+
+      showToast('💬 Đã gửi bình luận thành công!');
+      setNewCommentInput('');
+      loadChapterContentAndComments(slug, chNum);
+    } catch (err) {
+      showToast('Lỗi khi gửi bình luận!', 'error');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
+
   const handleSignOut = () => {
     api.logout();
     setUser(null);
@@ -385,30 +298,31 @@ export default function App() {
     setShowAuthModal(true);
   };
 
-  // Fetch stories & Merge with Mocks so 6-Column Grid is ALWAYS 100% full!
+  // Fetch 100% real stories from Spring Boot Backend & MongoDB
   const fetchStoriesData = async () => {
     setLoading(true);
     try {
       const apiData = await api.getStories().catch(() => []);
-      if (apiData && apiData.length > 0) {
+      if (Array.isArray(apiData)) {
         const sanitizedApi = apiData.map((item) => ({
           ...item,
           id: item.id || item.slug,
+          name: item.name || 'Bộ Truyện Chưa Đặt Tên',
           thumbUrl: sanitizeThumbUrl(item.thumbUrl),
           author: item.author || 'MangaCloud',
+          categories: Array.isArray(item.categories) && item.categories.length > 0 ? item.categories : ['Manga'],
+          status: item.status || 'Ongoing',
           latestChapter: item.latestChapter || 'Ch. 1',
-          updatedTime: item.updatedTime || '10 phút trước',
+          updatedTime: item.updatedTime || 'Mới cập nhật',
           isHot: item.viewCount > 500000 || item.isHot
         }));
-
-        const existingSlugs = new Set(sanitizedApi.map(s => s.slug));
-        const remainingMocks = INITIAL_MOCK_STORIES.filter(m => !existingSlugs.has(m.slug));
-        setStories([...sanitizedApi, ...remainingMocks]);
+        setStories(sanitizedApi);
       } else {
-        setStories(INITIAL_MOCK_STORIES);
+        setStories([]);
       }
     } catch (e) {
-      setStories(INITIAL_MOCK_STORIES);
+      console.error('API getStories failed:', e);
+      setStories([]);
     } finally {
       setLoading(false);
     }
@@ -440,6 +354,20 @@ export default function App() {
   const topViewStories = [...stories].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 12);
   const featuredStories = stories.slice(0, 12);
   const latestStories = stories.slice(0, displayCount);
+
+  // ISOLATED ADMIN DASHBOARD ROUTE
+  if (routePath === '/admin') {
+    return (
+      <AdminDashboard
+        stories={stories}
+        onRefreshStories={fetchStoriesData}
+        onNavigateHome={() => navigate('/')}
+        showToast={showToast}
+        theme={theme}
+        toggleTheme={toggleTheme}
+      />
+    );
+  }
 
   return (
     <div className="app-container">
@@ -740,8 +668,14 @@ export default function App() {
 
       {/* 3. MAIN CONTENT CONTAINER (FULL WIDTH 1280PX CENTERED) */}
       <main className="main-container">
-        {/* ROUTE 1: HOMEPAGE ('/') */}
-        {routePath === '/' && (
+        {loading && (
+          <div className="heart-loader-container">
+            <span className="pink-heart-icon">🩷</span>
+            <span className="heart-loader-text">Đang tải dữ liệu MangaCloud...</span>
+          </div>
+        )}
+
+        {!loading && routePath === '/' && (
           <>
             {/* Announcement Notice Alert Box */}
             <div className="notice-alert-box">
@@ -966,13 +900,23 @@ export default function App() {
                 className="detail-cover"
                 onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
               />
-              <button
-                className="btn-primary"
-                style={{ width: '100%', marginTop: '16px', padding: '12px' }}
-                onClick={() => navigate(`/read/${selectedStory.slug}/1`)}
-              >
-                📖 Đọc Từ Chapter 1
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+                <button
+                  className="btn-primary"
+                  style={{ width: '100%', padding: '12px' }}
+                  onClick={() => navigate(`/read/${selectedStory.slug}/1`)}
+                >
+                  ▶️ Đọc Từ Chapter 1
+                </button>
+
+                <button
+                  className="btn-secondary"
+                  style={{ width: '100%', padding: '10px' }}
+                  onClick={(e) => toggleBookmark(selectedStory.id, selectedStory.name, e)}
+                >
+                  {bookmarkedIds.has(selectedStory.id) ? '❤️ Đã Theo Dõi' : '🤍 Theo Dõi Truyện'}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -983,23 +927,39 @@ export default function App() {
                 {selectedStory.name}
               </h1>
               <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                Tác giả: <strong>{selectedStory.author || 'Chưa rõ'}</strong> | Trạng thái: <span className="status-badge ongoing">{selectedStory.status || 'Ongoing'}</span>
+                👤 Tác giả: <strong>{selectedStory.author || 'Chưa rõ'}</strong> | 👁️ Lượt xem: <strong>{selectedStory.viewCount ? selectedStory.viewCount.toLocaleString() : 0}</strong> | Trạng thái: <span className="status-badge ongoing">{selectedStory.status || 'Ongoing'}</span>
               </div>
               <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
                 {selectedStory.summary || 'Bộ truyện chưa có mô tả tóm tắt.'}
               </p>
 
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>Danh Sách Chapter</h3>
-              <div className="chapter-list-grid">
-                {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((ch) => (
-                  <button
-                    key={ch}
-                    className="chapter-item-btn"
-                    onClick={() => navigate(`/read/${selectedStory.slug}/${ch}`)}
-                  >
-                    Chapter {ch}
-                  </button>
-                ))}
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '12px' }}>
+                📚 Danh Sách Chapter ({storyChaptersList.length || 10})
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {storyChaptersList.length === 0 ? (
+                  [10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((ch) => (
+                    <div
+                      key={ch}
+                      className="chapter-row-item"
+                      onClick={() => navigate(`/read/${selectedStory.slug}/${ch}`)}
+                    >
+                      <span className="ch-title">Chapter {ch}</span>
+                      <span className="ch-time">🕒 Mới cập nhật</span>
+                    </div>
+                  ))
+                ) : (
+                  storyChaptersList.map((ch) => (
+                    <div
+                      key={ch.id || ch.chapterNumber}
+                      className="chapter-row-item"
+                      onClick={() => navigate(`/read/${selectedStory.slug}/${ch.chapterNumber}`)}
+                    >
+                      <span className="ch-title">Chapter {ch.chapterNumber}: {ch.title || `Tập ${ch.chapterNumber}`}</span>
+                      <span className="ch-time">🕒 {ch.updatedTime || 'Mới cập nhật'}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -1007,93 +967,143 @@ export default function App() {
 
         {/* ROUTE 3: CHAPTER READER SCREEN ('/read/:storySlug/:chapterName') */}
         {routePath.startsWith('/read/') && (
-          <div className="reader-container">
-            <div className="reader-header">
-              <button className="btn-secondary" onClick={() => navigate(selectedStory ? `/story/${selectedStory.slug}` : '/')}>
-                &lsaquo; Quay lại truyện
-              </button>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                {selectedStory ? selectedStory.name : 'Đang đọc'} - Chapter {selectedChapter || '1'}
+          <div className="webtoon-reader-screen">
+            {/* TOP READER BAR */}
+            <header className="reader-top-bar">
+              <div className="reader-bar-left">
+                <button className="btn-secondary" onClick={() => navigate(selectedStory ? `/story/${selectedStory.slug}` : '/')}>
+                  ⬅️ Quay Lại
+                </button>
+                <div className="reader-story-title">
+                  <strong>{selectedStory?.name || 'Manga'}</strong> - Chapter {selectedChapter || '1'}
+                </div>
               </div>
-              <button className="btn-primary" onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) + 1}`)}>
-                Chapter tiếp &rsaquo;
-              </button>
-            </div>
 
-            <div className="reader-pages">
-              <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 1" />
-              <img src="https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 2" />
-              <img src="https://images.unsplash.com/photo-1534447677768-be436bb09401?w=900&auto=format&fit=crop&q=80" className="reader-img" alt="Page 3" />
-            </div>
-          </div>
-        )}
+              <div className="reader-bar-right">
+                {/* QUICK CHAPTER SELECT DROPDOWN */}
+                <select
+                  className="chapter-select-dropdown"
+                  value={selectedChapter || '1'}
+                  onChange={(e) => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${e.target.value}`)}
+                >
+                  {(storyChaptersList.length > 0 ? storyChaptersList : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => ({ chapterNumber: n, title: `Chapter ${n}` }))).map((ch) => (
+                    <option key={ch.id || ch.chapterNumber} value={ch.chapterNumber}>
+                      Chapter {ch.chapterNumber} {ch.title ? `- ${ch.title}` : ''}
+                    </option>
+                  ))}
+                </select>
 
-        {/* ROUTE 4: ADMIN DASHBOARD ('/admin') */}
-        {routePath === '/admin' && (
-          <div>
-            <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h2 className="page-title">🎛️ MangaCloud Admin Dashboard</h2>
-                <p className="page-subtitle">Quản trị hạ tầng, CRUD bộ truyện & Upload Chapter (ROLE_ADMIN).</p>
+                <button
+                  className="btn-secondary"
+                  disabled={Number(selectedChapter || 1) <= 1}
+                  onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) - 1}`)}
+                >
+                  ‹ Tập Trước
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) + 1}`)}
+                >
+                  Tập Sau ›
+                </button>
               </div>
-              <button className="btn-secondary" onClick={() => navigate('/')}>
-                &lsaquo; Về Trang Chủ
-              </button>
-            </div>
+            </header>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
-              <button
-                className={`btn-${adminActiveNav === 'Dashboard' ? 'primary' : 'secondary'}`}
-                onClick={() => setAdminActiveNav('Dashboard')}
-              >
-                Overview
-              </button>
-              <button
-                className={`btn-${adminActiveNav === 'Story Management' ? 'primary' : 'secondary'}`}
-                onClick={() => setAdminActiveNav('Story Management')}
-              >
-                Story Management
-              </button>
-              <button
-                className={`btn-${adminActiveNav === 'Chapter Uploader' ? 'primary' : 'secondary'}`}
-                onClick={() => setAdminActiveNav('Chapter Uploader')}
-              >
-                Chapter Uploader
-              </button>
-            </div>
+            {/* WEBTOON IMAGE CANVAS */}
+            <main className="webtoon-canvas">
+              {chapterLoading ? (
+                <div className="heart-loader-container">
+                  <span className="pink-heart-icon">🩷</span>
+                  <span className="heart-loader-text">Đang tải trang ảnh Webtoon...</span>
+                </div>
+              ) : chapterDetail?.pages && chapterDetail.pages.length > 0 ? (
+                chapterDetail.pages.map((imgUrl, idx) => (
+                  <img
+                    key={idx}
+                    src={imgUrl}
+                    alt={`Page ${idx + 1}`}
+                    className="webtoon-page-img"
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }}
+                  />
+                ))
+              ) : (
+                <div style={{ width: '100%' }}>
+                  <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?w=900&auto=format&fit=crop&q=80" className="webtoon-page-img" alt="Page 1" />
+                  <img src="https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=900&auto=format&fit=crop&q=80" className="webtoon-page-img" alt="Page 2" />
+                  <img src="https://images.unsplash.com/photo-1534447677768-be436bb09401?w=900&auto=format&fit=crop&q=80" className="webtoon-page-img" alt="Page 3" />
+                </div>
+              )}
+            </main>
 
-            <section className="panel-card">
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Cover</th>
-                      <th>Tên Truyện</th>
-                      <th>Status</th>
-                      <th>Slug</th>
-                      <th>Views</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stories.map((story) => (
-                      <tr key={story.id || story.slug}>
-                        <td><img src={sanitizeThumbUrl(story.thumbUrl)} className="cover-img" alt={story.name} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_COVER_IMAGE; }} /></td>
-                        <td><strong style={{ color: 'var(--text-primary)' }}>{story.name}</strong></td>
-                        <td><span className="status-badge ongoing">{story.status || 'Ongoing'}</span></td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '11px' }}>{story.slug}</td>
-                        <td>{story.viewCount ? story.viewCount.toLocaleString() : 0}</td>
-                        <td>
-                          <button className="btn-secondary" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={() => alert('Sửa truyện: ' + story.name)}>
-                            Sửa
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* BOTTOM NAV & LIVE COMMENTS */}
+            <footer className="reader-bottom-section">
+              <div className="reader-bottom-nav">
+                <button
+                  className="btn-secondary"
+                  disabled={Number(selectedChapter || 1) <= 1}
+                  onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) - 1}`)}
+                >
+                  ‹ Tập Trước
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={(e) => toggleBookmark(selectedStory?.id, selectedStory?.name, e)}
+                >
+                  {bookmarkedIds.has(selectedStory?.id) ? '❤️ Đã Theo Dõi' : '🤍 Theo Dõi Truyện'}
+                </button>
+                <button
+                  className="btn-primary"
+                  onClick={() => navigate(`/read/${selectedStory?.slug || 'one-piece'}/${Number(selectedChapter || 1) + 1}`)}
+                >
+                  Tập Sau ›
+                </button>
               </div>
-            </section>
+
+              {/* LIVE COMMENT SECTION */}
+              <div className="comments-section-container">
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  💬 Bình Luận Độc Giả ({chapterComments.length})
+                </h3>
+
+                <form onSubmit={handlePostComment} className="comment-input-form">
+                  <textarea
+                    rows={3}
+                    className="form-control"
+                    placeholder={userRole === 'GUEST' ? '🔒 Vui lòng đăng nhập để gửi bình luận...' : 'Viết bình luận của bạn về chapter này...'}
+                    value={newCommentInput}
+                    onChange={(e) => setNewCommentInput(e.target.value)}
+                    disabled={userRole === 'GUEST' || commentSubmitting}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                    <button type="submit" className="btn-primary" disabled={userRole === 'GUEST' || commentSubmitting}>
+                      {commentSubmitting ? 'Đang gửi...' : '💬 Gửi Bình Luận'}
+                    </button>
+                  </div>
+                </form>
+
+                <div className="comments-list">
+                  {chapterComments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      Chưa có bình luận nào cho Chapter này. Hãy là người đầu tiên bình luận!
+                    </div>
+                  ) : (
+                    chapterComments.map((c) => (
+                      <div key={c.id || Math.random()} className="comment-card">
+                        <div className="comment-avatar">👤</div>
+                        <div style={{ flex: 1 }}>
+                          <div className="comment-author-row">
+                            <strong style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{c.username || 'Thành Viên'}</strong>
+                            <span className="comment-time">{c.time || 'vừa xong'}</span>
+                          </div>
+                          <div className="comment-content-text">{c.content}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </footer>
           </div>
         )}
       </main>

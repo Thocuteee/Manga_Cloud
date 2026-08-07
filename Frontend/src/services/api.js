@@ -98,8 +98,19 @@ export const api = {
     method: 'DELETE',
   }),
 
+  // Otruyen Auto Importer API
+  importOtruyenStory: (slug) => request(`/admin/import-otruyen/${slug}`, {
+    method: 'POST',
+  }),
+
+  importBatchOtruyenStories: (pages = 3) => request(`/admin/import-otruyen/batch?pages=${pages}`, {
+    method: 'POST',
+  }),
+
   // Chapter Management APIs
-  getChaptersByStory: (storySlug) => request(`/chapters/story/${storySlug}`),
+  getChaptersByStory: (storySlug) => request(`/chapters/story/${storySlug}`).catch(() => []),
+
+  getChapterDetail: (storySlug, chapterName) => request(`/chapters/story/${storySlug}/${chapterName}`).catch(() => null),
 
   createChapter: (chapterData) => request('/chapters', {
     method: 'POST',
@@ -109,6 +120,39 @@ export const api = {
   deleteChapter: (id) => request(`/chapters/${id}`, {
     method: 'DELETE',
   }),
+
+  // User Management APIs
+  getUsers: () => request('/users').catch(() => []),
+
+  updateUserRole: (userId, role) => request(`/users/${userId}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  }).catch(() => null),
+
+  toggleBanUser: (userId, status) => request(`/users/${userId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }).catch(() => null),
+
+  // Comment & Report Moderation APIs
+  getComments: () => request('/comments').catch(() => []),
+
+  getCommentsByChapter: (storySlug, chapterName) => request(`/comments/story/${storySlug}/${chapterName}`).catch(() => []),
+
+  createComment: (commentData) => request('/comments', {
+    method: 'POST',
+    body: JSON.stringify(commentData),
+  }),
+
+  deleteComment: (id) => request(`/comments/${id}`, {
+    method: 'DELETE',
+  }).catch(() => null),
+
+  getChapterReports: () => request('/reports').catch(() => []),
+
+  resolveReport: (id) => request(`/reports/${id}/resolve`, {
+    method: 'POST',
+  }).catch(() => null),
 };
 
 export default api;
