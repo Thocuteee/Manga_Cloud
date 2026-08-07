@@ -181,12 +181,22 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('mangacloud_theme') || 'light');
   const [routePath, setRoutePath] = useState(window.location.pathname || '/');
 
-  // User state & Bookmarks list
-  const [user, setUser] = useState({ username: 'Admin User', email: 'sysadmin@mangacloud.com', role: 'ROLE_ADMIN' });
-  const [userRole, setUserRole] = useState('ADMIN'); // 'GUEST' | 'MEMBER' | 'ADMIN'
+  // User state & Bookmarks list (Default: GUEST mode)
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState('GUEST'); // 'GUEST' | 'MEMBER' | 'ADMIN'
   const [bookmarkedIds, setBookmarkedIds] = useState(new Set());
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showCategoryPopover, setShowCategoryPopover] = useState(false);
+
+  // Auth Modal State (Login & Register)
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState('login'); // 'login' | 'register'
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Auth Form Fields
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authUsername, setAuthUsername] = useState('');
 
   // Data & Toast state
   const [stories, setStories] = useState([]);
@@ -262,6 +272,119 @@ export default function App() {
     });
   };
 
+  // Check persistent token & user session on app launch
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (token && storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        const roleStr = parsedUser.role || parsedUser.roles?.[0] || 'ROLE_MEMBER';
+        const isSystemAdmin = roleStr === 'ROLE_ADMIN' || roleStr.includes('ADMIN');
+        setUserRole(isSystemAdmin ? 'ADMIN' : 'MEMBER');
+      } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  // Auth Submit Handlers with Real Backend API Integration
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthLoading(true);
+
+    if (authTab === 'login') {
+      if (!authEmail || !authPassword) {
+        showToast('Vui lòng nhập đầy đủ Email/Username và Mật khẩu!', 'error');
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        // Call Backend API POST /api/v1/auth/login
+        const res = await api.login(authEmail, authPassword);
+        const roleStr = res.role || res.roles?.[0] || (authEmail.includes('admin') ? 'ROLE_ADMIN' : 'ROLE_MEMBER');
+        const isSystemAdmin = roleStr === 'ROLE_ADMIN' || roleStr.includes('ADMIN');
+
+        const userData = {
+          username: res.username || authEmail.split('@')[0],
+          email: res.email || authEmail,
+          role: roleStr
+        };
+
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        setUserRole(isSystemAdmin ? 'ADMIN' : 'MEMBER');
+
+        showToast(`🔑 Đăng nhập thành công! Chào mừng ${userData.username}`);
+        setShowAuthModal(false);
+        setAuthEmail('');
+        setAuthPassword('');
+      } catch (err) {
+        showToast(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu!', 'error');
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      // REGISTER
+      if (!authUsername || !authEmail || !authPassword) {
+        showToast('Vui lòng điền đầy đủ Username, Email và Mật khẩu!', 'error');
+        setAuthLoading(false);
+        return;
+      }
+
+      try {
+        // Call Backend API POST /api/v1/auth/register
+        const res = await api.register({
+          username: authUsername,
+          email: authEmail,
+          password: authPassword
+        });
+
+        const userData = {
+          username: res.username || authUsername,
+          email: res.email || authEmail,
+          role: res.role || 'ROLE_MEMBER'
+        };
+
+        if (res.token) {
+          localStorage.setItem('token', res.token);
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
+
+        setUser(userData);
+        setUserRole('MEMBER');
+
+        showToast(`🎉 Đăng ký tài khoản "${authUsername}" thành công!`);
+        setShowAuthModal(false);
+        setAuthUsername('');
+        setAuthEmail('');
+        setAuthPassword('');
+      } catch (err) {
+        showToast(err.message || 'Đăng ký thất bại. Tên đăng nhập hoặc Email có thể đã tồn tại!', 'error');
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const handleSignOut = () => {
+    api.logout();
+    setUser(null);
+    setUserRole('GUEST');
+    showToast('Đã đăng xuất khỏi hệ thống.');
+  };
+
+  // Open Auth Modal
+  const openAuth = (tab) => {
+    setAuthTab(tab);
+    setShowAuthModal(true);
+  };
+
   // Fetch stories & Merge with Mocks so 6-Column Grid is ALWAYS 100% full!
   const fetchStoriesData = async () => {
     setLoading(true);
@@ -278,7 +401,6 @@ export default function App() {
           isHot: item.viewCount > 500000 || item.isHot
         }));
 
-        // Merge fetched API data with Mocks to guarantee at least 12-18 grid items
         const existingSlugs = new Set(sanitizedApi.map(s => s.slug));
         const remainingMocks = INITIAL_MOCK_STORIES.filter(m => !existingSlugs.has(m.slug));
         setStories([...sanitizedApi, ...remainingMocks]);
@@ -314,7 +436,7 @@ export default function App() {
     }
   };
 
-  // Data Sections for Homepage (Ensure 6-column grid is filled)
+  // Data Sections for Homepage
   const topViewStories = [...stories].sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).slice(0, 12);
   const featuredStories = stories.slice(0, 12);
   const latestStories = stories.slice(0, displayCount);
@@ -331,20 +453,130 @@ export default function App() {
         </div>
       )}
 
+      {/* AUTH MODAL DIALOG (LOGIN & REGISTER SHOWCASE) */}
+      {showAuthModal && (
+        <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+          <div className="auth-modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="auth-close-btn" onClick={() => setShowAuthModal(false)}>✕</button>
+
+            {/* Logo Artwork & Sparkles Header */}
+            <div className="auth-logo-header">
+              <span className="sparkle-icon">✨</span>
+              <img src="/logo.png" alt="MangaCloud Logo" className="auth-logo-img" />
+              <span className="sparkle-icon">✨</span>
+            </div>
+
+            <div className="auth-title">
+              {authTab === 'login' ? 'Welcome Back' : 'Join MangaCloud'}
+            </div>
+            <div className="auth-subtitle">
+              {authTab === 'login' ? 'Sign in to continue reading.' : 'Create an account to start tracking.'}
+            </div>
+
+            {/* Segmented Tab Switcher */}
+            <div className="auth-tab-switcher">
+              <button
+                type="button"
+                className={`auth-tab-item ${authTab === 'login' ? 'active' : ''}`}
+                onClick={() => setAuthTab('login')}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                className={`auth-tab-item ${authTab === 'register' ? 'active' : ''}`}
+                onClick={() => setAuthTab('register')}
+              >
+                Register
+              </button>
+            </div>
+
+            {/* Auth Form */}
+            <form onSubmit={handleAuthSubmit}>
+              {authTab === 'register' && (
+                <>
+                  <div className="input-label-row">
+                    <label>Tên tài khoản (Username)</label>
+                  </div>
+                  <div className="input-with-icon-wrapper">
+                    <span className="input-left-icon">👤</span>
+                    <input
+                      type="text"
+                      className="auth-input"
+                      placeholder="Nhập tên tài khoản..."
+                      value={authUsername}
+                      onChange={(e) => setAuthUsername(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="input-label-row">
+                <label>{authTab === 'login' ? 'Email hoặc Tên tài khoản' : 'Địa chỉ Email'}</label>
+              </div>
+              <div className="input-with-icon-wrapper">
+                <span className="input-left-icon">{authTab === 'login' ? '👤' : '✉️'}</span>
+                <input
+                  type={authTab === 'login' ? 'text' : 'email'}
+                  className="auth-input"
+                  placeholder={authTab === 'login' ? 'Nhập email hoặc username...' : 'Nhập địa chỉ email...'}
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="input-label-row">
+                <label>Mật khẩu</label>
+                {authTab === 'login' && (
+                  <span className="forgot-link" onClick={() => showToast('Vui lòng liên hệ Admin để khôi phục mật khẩu!', 'error')}>
+                    Quên mật khẩu?
+                  </span>
+                )}
+              </div>
+              <div className="input-with-icon-wrapper">
+                <span className="input-left-icon">🔒</span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="auth-input"
+                  placeholder="Nhập mật khẩu..."
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="input-right-action"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                >
+                  {showPassword ? '👁️' : '🙈'}
+                </button>
+              </div>
+
+              <button type="submit" className="btn-auth-submit">
+                {authTab === 'login' ? (
+                  <>Sign In &rarr;</>
+                ) : (
+                  <>Create Account 👤+</>
+                )}
+              </button>
+            </form>
+
+            <div className="auth-footer-terms">
+              By registering, you agree to our Terms and Privacy Policy.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP MAIN HEADER ROW */}
       <div style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-color)', width: '100%' }}>
         <header className="top-main-header">
-          {/* Left: Brand Logo Ổ Truyện Style */}
-          <div className="header-brand" onClick={() => navigate('/')}>
-            <div className="brand-logo-card">
-              <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-            <div>
-              <div className="brand-name">MangaCloud</div>
-              <div className="brand-tag">Ổ Truyện Soft Pink</div>
-            </div>
+          {/* Left: Custom Brand Logo Ổ Truyện Soft Pink Artwork */}
+          <div className="header-brand" onClick={() => navigate('/')} title="Về trang chủ MangaCloud">
+            <img src="/logo.png" alt="MangaCloud - Ổ Truyện Soft Pink" className="brand-logo-img" />
           </div>
 
           {/* Center: Search Bar with Search Button */}
@@ -365,18 +597,31 @@ export default function App() {
 
           {/* Right: Quick Action Buttons */}
           <div className="header-actions-group">
+            {/* Theme Toggle Button */}
+            <button className="icon-btn" onClick={toggleTheme} title={`Chuyển sang ${theme === 'light' ? 'Dark' : 'Light'} mode`}>
+              {theme === 'dark' ? (
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              )}
+            </button>
+
             {userRole === 'GUEST' ? (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   className="btn-primary"
-                  onClick={() => handleRoleSwitch('MEMBER')}
+                  onClick={() => openAuth('login')}
                   style={{ padding: '8px 18px', fontSize: '13px', borderRadius: '8px', backgroundColor: '#f472b6' }}
                 >
                   Đăng Nhập
                 </button>
                 <button
                   className="btn-primary"
-                  onClick={() => handleRoleSwitch('MEMBER')}
+                  onClick={() => openAuth('register')}
                   style={{ padding: '8px 18px', fontSize: '13px', borderRadius: '8px', backgroundColor: '#ec4899' }}
                 >
                   Đăng Ký
@@ -390,18 +635,6 @@ export default function App() {
                   </svg>
                 </button>
 
-                <button className="icon-btn" onClick={toggleTheme} title={`Chuyển sang ${theme === 'light' ? 'Dark' : 'Light'} mode`}>
-                  {theme === 'dark' ? (
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  ) : (
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  )}
-                </button>
-
                 <div className="profile-menu-container">
                   <div className="profile-trigger" onClick={() => setShowProfileDropdown(!showProfileDropdown)}>
                     <img
@@ -411,7 +644,7 @@ export default function App() {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                       <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-                        {userRole === 'MEMBER' ? 'Kuro22' : 'Admin User'}
+                        {userRole === 'MEMBER' ? (user?.username || 'Kuro22') : 'Admin User'}
                       </span>
                       <span style={{ fontSize: '10px', color: 'var(--accent-pink)', fontWeight: 700, letterSpacing: '0.05em' }}>
                         {userRole === 'ADMIN' ? 'SYS_OP' : 'MEMBER'}
@@ -430,26 +663,22 @@ export default function App() {
 
                       <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
 
-                      <button
-                        className="dropdown-item admin-highlight"
-                        onClick={() => {
-                          if (userRole !== 'ADMIN') {
-                            showToast('Chỉ Quản trị viên (Admin) mới có quyền vào Dashboard!', 'error');
-                          } else {
-                            navigate('/admin');
-                          }
-                        }}
-                      >
-                        🎛️ Admin Dashboard &rsaquo;
-                      </button>
+                      {/* ADMIN DASHBOARD LINK (ONLY FOR ROLE_ADMIN) */}
+                      {userRole === 'ADMIN' && (
+                        <>
+                          <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
+                          <button
+                            className="dropdown-item admin-highlight"
+                            onClick={() => navigate('/admin')}
+                          >
+                            🎛️ Admin Dashboard &rsaquo;
+                          </button>
+                        </>
+                      )}
 
                       <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
 
-                      <button className="dropdown-item" onClick={() => handleRoleSwitch(userRole === 'ADMIN' ? 'GUEST' : 'ADMIN')}>
-                        🔄 Chuyển vai trò ({userRole === 'ADMIN' ? 'Thành Guest' : 'Thành Admin'})
-                      </button>
-
-                      <button className="dropdown-item" onClick={() => handleRoleSwitch('GUEST')}>
+                      <button className="dropdown-item" onClick={handleSignOut}>
                         🚪 Sign out
                       </button>
                     </div>
@@ -584,7 +813,7 @@ export default function App() {
               ))}
             </div>
 
-            {/* SECTION 2: TRUYỆN HOT THÁNG NÀY (LƯỚI 6 CỘT TỰ ĐỘNG LẤP ĐẦY) */}
+            {/* SECTION 2: TRUYỆN HOT THÁNG NÀY */}
             <div className="section-header">
               <h3 className="section-title">💖 TRUYỆN HOT THÁNG NÀY</h3>
             </div>
@@ -594,13 +823,11 @@ export default function App() {
                 return (
                   <div key={story.id || idx} className="manga-card" onClick={() => navigate(`/story/${story.slug}`)}>
                     <div className="manga-cover-wrapper">
-                      {/* Left Badges: Relative Time & HOT Tag */}
                       <div className="cover-badges-left">
                         <span className="manga-time-badge">🕒 {story.updatedTime || '10p trước'}</span>
                         {(story.isHot || idx < 3) && <span className="manga-hot-badge">HOT</span>}
                       </div>
 
-                      {/* Right Interactive Bookmark Button */}
                       <button
                         className={`bookmark-btn ${isBookmarked ? 'active' : ''}`}
                         title={isBookmarked ? 'Bỏ theo dõi' : 'Thêm vào Theo Dõi'}
@@ -617,7 +844,6 @@ export default function App() {
                       />
                     </div>
 
-                    {/* Manga Card Info: Bold Story Title (2 lines) & Meta Row */}
                     <div className="manga-card-info">
                       <div className="manga-card-title">{story.name}</div>
                       <div className="manga-card-meta">
@@ -877,9 +1103,8 @@ export default function App() {
         <div className="footer-container">
           <div className="footer-grid">
             <div>
-              <div className="header-brand" style={{ marginBottom: '12px' }}>
-                <div className="brand-logo-card">🌸</div>
-                <div className="brand-name">MangaCloud</div>
+              <div className="header-brand" onClick={() => navigate('/')} style={{ marginBottom: '12px' }}>
+                <img src="/logo.png" alt="MangaCloud" className="brand-logo-img" style={{ height: '36px' }} />
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '320px' }}>
                 MangaCloud - Ổ Truyện Soft Pink Theme. Nền tảng đọc truyện tranh vietsub bản quyền cao cấp nhẹ nhàng dịu mắt.
