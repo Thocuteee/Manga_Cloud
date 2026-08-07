@@ -22,6 +22,8 @@ public class StoryResponse {
     private List<String> categories;
     private String status;
     private String summary;
+    private String latestChapter;
+    private int totalChapters;
     private long viewCount;
     private boolean isPublic;
     private double rating;

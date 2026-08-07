@@ -38,6 +38,12 @@ public class Story {
 
     private String summary; 
 
+    @Field("latest_chapter")
+    private String latestChapter;
+
+    @Field("total_chapters")
+    private int totalChapters;
+
     @Field("rating")
     private double rating;
 

@@ -54,6 +54,9 @@ public class ChapterServiceImpl implements ChapterService{
         chapter.setChapterName(request.getChapterName());
         chapter.setChapterTitle(request.getChapterTitle());
         chapter.setChapterApiUrl(request.getChapterApiUrl());
+        if (request.getPages() != null) {
+            chapter.setPages(request.getPages());
+        }
         chapter.setUpdatedAt(LocalDateTime.now());
 
         Chapter updatedChapter = chapterRepository.save(chapter);

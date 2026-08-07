@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,16 +21,19 @@ public class Chapter {
     private String id;
 
     @Field("story_slug")
-    private String storySlug;      // Đã đổi từ storyId sang storySlug chuẩn theo ý bạn
+    private String storySlug;
 
     @Field("chapter_name")
-    private String chapterName;    // VD: "1", "10.5"
+    private String chapterName;  
 
     @Field("chapter_title")
-    private String chapterTitle;   // VD: "Khởi đầu mới"
+    private String chapterTitle;  
 
     @Field("chapter_api_url")
-    private String chapterApiUrl;  // Link API lấy chi tiết trang ảnh của chương đó từ OTruyen
+    private String chapterApiUrl;  
+
+    @Field("pages")
+    private List<String> pages;  
 
     @Field("updated_at")
     private LocalDateTime updatedAt;

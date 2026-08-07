@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -17,5 +18,6 @@ public class ChapterResponse {
     private String chapterName;
     private String chapterTitle;
     private String chapterApiUrl;
+    private List<String> pages;
     private LocalDateTime updatedAt;
 }

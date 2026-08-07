@@ -17,4 +17,6 @@ public class UserResponse {
     private String email;
     private String avatar;
     private List<String> roles;
+    private String status; // "ACTIVE" | "BANNED"
+    private String joinedDate;
 }

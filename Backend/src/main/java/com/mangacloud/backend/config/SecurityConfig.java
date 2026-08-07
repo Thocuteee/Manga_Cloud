@@ -33,6 +33,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // 1. API Auth (Đăng nhập, Đăng ký public)
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/users/**").permitAll()
+                .requestMatchers("/api/v1/admin/import-otruyen/**").permitAll()
                 
                 // 2. GUEST (Khách vô danh) - Không cần Token: Đọc truyện, xem chapter, xem comment
                 .requestMatchers(HttpMethod.GET, "/api/v1/stories/**").permitAll()
