@@ -31,20 +31,26 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Cho phép Frontend gọi API
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không tạo Session
             .authorizeHttpRequests(auth -> auth
-                // 1. Phân quyền API Auth (Đăng nhập, Đăng ký public)
+                // 1. API Auth (Đăng nhập, Đăng ký public)
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 
-                // 2. Cho phép ai cũng có thể đọc/xem thông tin Truyện & Chapter (GET Requests)
+                // 2. GUEST (Khách vô danh) - Không cần Token: Đọc truyện, xem chapter, xem comment
                 .requestMatchers(HttpMethod.GET, "/api/v1/stories/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/chapters/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
 
-                // 3. API dành cho ADMIN (Thêm/Sửa/Xóa truyện, Crawler)
+                // 3. ADMIN (ROLE_ADMIN) - Cần Token Admin: Thêm/Sửa/Xóa truyện & Upload Chapter
+                .requestMatchers(HttpMethod.POST, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/chapters/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/chapters/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
 
-                // 4. Các API còn lại (Comment, Bookmark, Lịch sử...) bắt buộc phải Đăng nhập
+                // 4. MEMBER (Thành viên - ROLE_MEMBER): Bookmark, Lịch sử đọc, Viết Comment...
                 .anyRequest().authenticated()
             )
+
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -59,12 +65,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); // Khi đưa lên Production sẽ đổi thành domain của Frontend
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowedOriginPatterns(List.of(
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:*",
+            "http://127.0.0.1:*"
+        ));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }
+
