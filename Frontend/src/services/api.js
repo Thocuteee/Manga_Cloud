@@ -1,0 +1,114 @@
+// Frontend API Service Layer for MangaCloud Backend
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
+
+/**
+ * Generic fetch wrapper with automatic JWT header injection and 401 handling.
+ */
+async function request(endpoint, options = {}) {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const token = localStorage.getItem('token');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const config = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, config);
+
+    // 401 Unauthorized handling (Expired/Invalid Token)
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+      throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || errorData.message || `Lỗi yêu cầu: ${response.statusText}`);
+    }
+
+    // Return empty object for 204 No Content
+    if (response.status === 204) {
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`API Error [${endpoint}]:`, error);
+    throw error;
+  }
+}
+
+export const api = {
+  // Authentication APIs
+  login: async (usernameOrEmail, password) => {
+    const data = await request('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ usernameOrEmail, password }),
+    });
+    if (data && data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+    }
+    return data;
+  },
+
+  register: (userData) => request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(userData),
+  }),
+
+  getCurrentUser: () => request('/auth/me'),
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+  },
+
+  // Story Management APIs
+  getStories: () => request('/stories'),
+
+  getStoryBySlug: (slug) => request(`/stories/${slug}`),
+
+  createStory: (storyData) => request('/stories', {
+    method: 'POST',
+    body: JSON.stringify(storyData),
+  }),
+
+  updateStory: (id, storyData) => request(`/stories/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(storyData),
+  }),
+
+  deleteStory: (id) => request(`/stories/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Chapter Management APIs
+  getChaptersByStory: (storySlug) => request(`/chapters/story/${storySlug}`),
+
+  createChapter: (chapterData) => request('/chapters', {
+    method: 'POST',
+    body: JSON.stringify(chapterData),
+  }),
+
+  deleteChapter: (id) => request(`/chapters/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+export default api;
