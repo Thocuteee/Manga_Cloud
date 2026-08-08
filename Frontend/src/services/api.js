@@ -99,9 +99,11 @@ export const api = {
   }),
 
   // Otruyen Auto Importer API
-  importOtruyenStory: (slug) => request(`/admin/import-otruyen/${slug}`, {
-    method: 'POST',
-  }),
+  // Auto-Crawler 1-Click Search & Import APIs
+  searchOtruyenStories: (query) => request(`/admin/import-otruyen/search?q=${encodeURIComponent(query)}`).catch(() => []),
+  importOtruyenBySlug: (slug) => request(`/admin/import-otruyen/${slug}`, { method: 'POST' }),
+  searchMangadexStories: (query) => request(`/admin/import-otruyen/mangadex/search?q=${encodeURIComponent(query)}`).catch(() => []),
+  importMangadexById: (id) => request(`/admin/import-otruyen/mangadex/${id}`, { method: 'POST' }),
 
   importBatchOtruyenStories: (startPage = 1, endPage = 5) => request(`/admin/import-otruyen/batch?startPage=${startPage}&endPage=${endPage}`, {
     method: 'POST',
@@ -112,10 +114,28 @@ export const api = {
 
   getChapterDetail: (storySlug, chapterName) => request(`/chapters/story/${storySlug}/${chapterName}`).catch(() => null),
 
-  createChapter: (chapterData) => request('/chapters', {
-    method: 'POST',
-    body: JSON.stringify(chapterData),
-  }),
+  createChapter: (storySlugOrData, data) => {
+    const payload = typeof storySlugOrData === 'string'
+      ? {
+          storySlug: storySlugOrData,
+          chapterName: String(data?.chapterName || data?.chapterNumber || '1'),
+          chapterTitle: data?.chapterTitle || data?.title || `Chapter ${data?.chapterName || 1}`,
+          chapterApiUrl: data?.chapterApiUrl || data?.apiDataUrl || '',
+          pages: Array.isArray(data?.pages) ? data.pages : []
+        }
+      : {
+          storySlug: storySlugOrData?.storySlug,
+          chapterName: String(storySlugOrData?.chapterName || storySlugOrData?.chapterNumber || '1'),
+          chapterTitle: storySlugOrData?.chapterTitle || storySlugOrData?.title || `Chapter ${storySlugOrData?.chapterName || 1}`,
+          chapterApiUrl: storySlugOrData?.chapterApiUrl || storySlugOrData?.apiDataUrl || '',
+          pages: Array.isArray(storySlugOrData?.pages) ? storySlugOrData.pages : []
+        };
+
+    return request('/chapters', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
 
   deleteChapter: (id) => request(`/chapters/${id}`, {
     method: 'DELETE',
