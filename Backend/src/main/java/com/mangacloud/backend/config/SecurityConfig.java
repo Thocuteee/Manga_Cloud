@@ -31,26 +31,19 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Cho phép Frontend gọi API
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Không tạo Session
             .authorizeHttpRequests(auth -> auth
-                // 1. API Auth (Đăng nhập, Đăng ký public)
+                // 1. API Auth & Admin Public Endpoints
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/users/**").permitAll()
+                .requestMatchers("/api/v1/admin/**").permitAll()
                 .requestMatchers("/api/v1/admin/import-otruyen/**").permitAll()
                 
-                // 2. GUEST (Khách vô danh) - Không cần Token: Đọc truyện, xem chapter, xem comment
-                .requestMatchers(HttpMethod.GET, "/api/v1/stories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/chapters/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/comments/**").permitAll()
+                // 2. Stories, Chapters & Comments API (Public Access for Admin CRUD & Guest Reading)
+                .requestMatchers("/api/v1/stories/**").permitAll()
+                .requestMatchers("/api/v1/chapters/**").permitAll()
+                .requestMatchers("/api/v1/comments/**").permitAll()
 
-                // 3. ADMIN (ROLE_ADMIN) - Cần Token Admin: Thêm/Sửa/Xóa truyện & Upload Chapter
-                .requestMatchers(HttpMethod.POST, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/stories/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/chapters/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/v1/chapters/**").hasAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/v1/admin/**").hasAuthority("ROLE_ADMIN")
-
-                // 4. MEMBER (Thành viên - ROLE_MEMBER): Bookmark, Lịch sử đọc, Viết Comment...
-                .anyRequest().authenticated()
+                // 3. Other Requests
+                .anyRequest().permitAll()
             )
 
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

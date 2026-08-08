@@ -8,6 +8,7 @@ import com.mangacloud.backend.exception.ResourceNotFoundException;
 import com.mangacloud.backend.mapper.ChapterMapper;
 import com.mangacloud.backend.model.Chapter;
 import com.mangacloud.backend.repository.ChapterRepository;
+import com.mangacloud.backend.repository.StoryRepository;
 import com.mangacloud.backend.service.ChapterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
@@ -26,6 +27,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ChapterServiceImpl implements ChapterService {
     private final ChapterRepository chapterRepository;
+    private final StoryRepository storyRepository;
     private final ChapterMapper chapterMapper;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -36,6 +38,16 @@ public class ChapterServiceImpl implements ChapterService {
         chapter.setUpdatedAt(LocalDateTime.now());
 
         Chapter savedChapter = chapterRepository.save(chapter);
+
+        if (request.getStorySlug() != null) {
+            storyRepository.findBySlug(request.getStorySlug()).ifPresent(story -> {
+                String chName = request.getChapterName() != null ? request.getChapterName() : "1";
+                story.setLatestChapter("Ch. " + chName);
+                story.setTotalChapters((int) chapterRepository.countByStorySlug(request.getStorySlug()));
+                story.setUpdateAt(LocalDateTime.now());
+                storyRepository.save(story);
+            });
+        }
 
         return chapterMapper.toResponse(savedChapter);
     }
@@ -68,17 +80,47 @@ public class ChapterServiceImpl implements ChapterService {
             throw new ResourceNotFoundException("Không tìm thấy chương " + chapterName + " của truyện: " + storySlug);
         }
 
-        if ((chapter.getPages() == null || chapter.getPages().isEmpty())
-                && chapter.getChapterApiUrl() != null
-                && !chapter.getChapterApiUrl().isEmpty()) {
-            try {
-                List<String> fetchedPages = fetchChapterPagesFromApi(chapter.getChapterApiUrl());
-                if (!fetchedPages.isEmpty()) {
-                    chapter.setPages(fetchedPages);
-                    chapterRepository.save(chapter);
+        boolean needsRealPages = chapter.getPages() == null || chapter.getPages().isEmpty()
+                || chapter.getPages().stream().anyMatch(p -> p != null && p.contains("unsplash.com"));
+
+        if (needsRealPages) {
+            String apiDataUrl = chapter.getChapterApiUrl();
+            if (apiDataUrl == null || apiDataUrl.isEmpty()) {
+                try {
+                    String url = "https://otruyenapi.com/v1/api/truyen-tranh/" + storySlug;
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                    HttpEntity<String> entity = new HttpEntity<>(headers);
+                    ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+                    if (response.getBody() != null) {
+                        JsonNode root = objectMapper.readTree(response.getBody());
+                        JsonNode chaptersNode = root.path("data").path("item").path("chapters");
+                        if (chaptersNode.isArray() && chaptersNode.size() > 0) {
+                            JsonNode serverData = chaptersNode.get(0).path("server_data");
+                            if (serverData.isArray()) {
+                                for (JsonNode chNode : serverData) {
+                                    if (chapterName.equalsIgnoreCase(chNode.path("chapter_name").asText())) {
+                                        apiDataUrl = chNode.path("chapter_api_data").asText();
+                                        chapter.setChapterApiUrl(apiDataUrl);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+
+            if (apiDataUrl != null && !apiDataUrl.isEmpty()) {
+                try {
+                    List<String> fetchedPages = fetchChapterPagesFromApi(apiDataUrl);
+                    if (!fetchedPages.isEmpty()) {
+                        chapter.setPages(fetchedPages);
+                        chapterRepository.save(chapter);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Lỗi Lazy Fetching ảnh chapter " + chapterName + " cho " + storySlug + ": " + e.getMessage());
                 }
-            } catch (Exception e) {
-                System.err.println("Lỗi Lazy Fetching ảnh chapter " + chapterName + " cho " + storySlug + ": " + e.getMessage());
             }
         }
 

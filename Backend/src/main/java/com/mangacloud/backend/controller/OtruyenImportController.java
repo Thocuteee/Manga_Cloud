@@ -1,12 +1,14 @@
 package com.mangacloud.backend.controller;
 
 import com.mangacloud.backend.model.Story;
+import com.mangacloud.backend.service.MangadexImportService;
 import com.mangacloud.backend.service.OtruyenImportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -15,6 +17,39 @@ import java.util.Map;
 public class OtruyenImportController {
 
     private final OtruyenImportService otruyenImportService;
+    private final MangadexImportService mangadexImportService;
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Map<String, Object>>> searchOtruyen(@RequestParam String q) {
+        return ResponseEntity.ok(otruyenImportService.searchOtruyenStories(q));
+    }
+
+    @GetMapping("/mangadex/search")
+    public ResponseEntity<List<Map<String, Object>>> searchMangadex(@RequestParam String q) {
+        return ResponseEntity.ok(mangadexImportService.searchMangadexStories(q));
+    }
+
+    @PostMapping("/mangadex/{id}")
+    public ResponseEntity<Map<String, Object>> importMangadexById(@PathVariable String id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Story storyEntity = mangadexImportService.importStoryFromMangadex(id);
+            if (storyEntity != null) {
+                response.put("success", true);
+                response.put("message", "Đã import bộ truyện MangaDex \"" + storyEntity.getName() + "\" thành công!");
+                response.put("story", storyEntity);
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Không tìm thấy bộ truyện hoặc không thể lấy dữ liệu từ MangaDex API!");
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Lỗi trong quá trình Import MangaDex: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(response);
+        }
+    }
 
     @PostMapping("/batch")
     public ResponseEntity<Map<String, Object>> importBatchStories(
@@ -26,7 +61,6 @@ public class OtruyenImportController {
         int from = (startPage != null && startPage > 0) ? startPage : 1;
         int to = (endPage != null && endPage >= from) ? endPage : (startPage != null ? startPage : pages);
 
-        // Kích hoạt tiến trình ngầm qua Spring AOP Proxy
         otruyenImportService.importBatchStoriesAsync(from, to);
 
         int totalExpected = (to - from + 1) * 24;

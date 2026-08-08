@@ -17,6 +17,9 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -44,16 +47,56 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
     }
 
     private String fetchJson(String url) {
+        if (url == null || url.trim().isEmpty()) {
+            return null;
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             HttpEntity<String> entity = new HttpEntity<>(headers);
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            ResponseEntity<String> response = restTemplate.exchange(URI.create(url), HttpMethod.GET, entity, String.class);
             return response.getBody();
         } catch (Exception e) {
             System.err.println("Lỗi khi fetch URL: " + url + " - " + e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    public List<Map<String, Object>> searchOtruyenStories(String keyword) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return results;
+        }
+        try {
+            String searchUrl = otruyenApiBaseUrl + "tim-kiem?keyword=" + URLEncoder.encode(keyword.trim(), StandardCharsets.UTF_8);
+            String jsonRaw = fetchJson(searchUrl);
+            if (jsonRaw != null) {
+                JsonNode root = objectMapper.readTree(jsonRaw);
+                JsonNode items = root.path("data").path("items");
+                if (items.isArray()) {
+                    for (JsonNode item : items) {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("name", item.path("name").asText(""));
+                        map.put("slug", item.path("slug").asText(""));
+                        String thumb = item.path("thumb_url").asText("");
+                        map.put("thumbUrl", formatThumbUrl(thumb));
+                        map.put("status", item.path("status").asText("Ongoing"));
+                        
+                        JsonNode latestChNode = item.path("chaptersLatest");
+                        if (latestChNode.isArray() && latestChNode.size() > 0) {
+                            map.put("latestChapter", "Ch. " + latestChNode.get(0).path("chapter_name").asText("1"));
+                        } else {
+                            map.put("latestChapter", "Ch. 1");
+                        }
+                        results.add(map);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi tìm kiếm OTruyen: " + e.getMessage());
+        }
+        return results;
     }
 
     @Override
@@ -203,8 +246,8 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
             JsonNode serverData = chaptersNode.get(0).path("server_data");
             if (serverData.isArray() && serverData.size() > 0) {
                 int totalCh = serverData.size();
-                String lastChNum = serverData.get(totalCh - 1).path("chapter_name").asText();
-                latestChapterName = "Ch. " + lastChNum;
+                String highestChNum = "1";
+                double maxChNum = -1.0;
 
                 for (int i = 0; i < totalCh; i++) {
                     JsonNode chNode = serverData.get(i);
@@ -212,7 +255,18 @@ public class OtruyenImportServiceImpl implements OtruyenImportService {
                     String chTitle = chNode.path("chapter_title").asText("Chapter " + chName);
                     String chapterApiUrl = chNode.path("chapter_api_data").asText();
                     chapterListToImport.add(new ChapterData(chName, chTitle, chapterApiUrl, i < 3 || i == totalCh - 1));
+
+                    try {
+                        double parsed = Double.parseDouble(chName.replaceAll("[^0-9.]", ""));
+                        if (parsed > maxChNum) {
+                            maxChNum = parsed;
+                            highestChNum = chName;
+                        }
+                    } catch (Exception ignored) {
+                        if (highestChNum.equals("1")) highestChNum = chName;
+                    }
                 }
+                latestChapterName = "Ch. " + highestChNum;
             }
         }
 

@@ -14,10 +14,14 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.mangacloud.backend.model.Chapter;
+import com.mangacloud.backend.repository.ChapterRepository;
+
 @Service
 @RequiredArgsConstructor
 public class StoryServiceImpl implements StoryService {
     private final StoryRepository storyRepository;
+    private final ChapterRepository chapterRepository;
     private final StoryMapper storyMapper; 
 
     @Override
@@ -38,6 +42,7 @@ public class StoryServiceImpl implements StoryService {
         Story story = storyRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy truyện với slug: " + slug));
 
+        fixLatestChapterIfInaccurate(story);
         story.setViewCount(story.getViewCount() + 1);
         storyRepository.save(story);
 
@@ -48,6 +53,32 @@ public class StoryServiceImpl implements StoryService {
     public List<StoryResponse> getAllStories() {
         List<Story> stories = storyRepository.findAll();
         return storyMapper.toResponseList(stories);
+    }
+
+    private void fixLatestChapterIfInaccurate(Story story) {
+        if (story.getSlug() == null) return;
+        List<Chapter> chapters = chapterRepository.findByStorySlug(story.getSlug());
+        if (!chapters.isEmpty()) {
+            double maxCh = -1.0;
+            String highestChName = "1";
+            for (Chapter c : chapters) {
+                String cName = c.getChapterName() != null ? c.getChapterName() : "1";
+                try {
+                    double p = Double.parseDouble(cName.replaceAll("[^0-9.]", ""));
+                    if (p > maxCh) {
+                        maxCh = p;
+                        highestChName = cName;
+                    }
+                } catch (Exception ignored) {}
+            }
+            String calcLatest = "Ch. " + highestChName;
+            int calcTotal = chapters.size();
+            if (!calcLatest.equals(story.getLatestChapter()) || story.getTotalChapters() != calcTotal) {
+                story.setLatestChapter(calcLatest);
+                story.setTotalChapters(calcTotal);
+                storyRepository.save(story);
+            }
+        }
     }
 
     @Override

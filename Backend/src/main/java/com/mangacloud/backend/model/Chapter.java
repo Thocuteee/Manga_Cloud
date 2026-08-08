@@ -37,4 +37,12 @@ public class Chapter {
 
     @Field("updated_at")
     private LocalDateTime updatedAt;
+
+    public void setImageUrls(List<String> imageUrls) {
+        this.pages = imageUrls;
+    }
+
+    public List<String> getImageUrls() {
+        return this.pages;
+    }
 }

@@ -9,13 +9,16 @@ import java.util.Optional;
 
 @Repository
 public interface ChapterRepository extends MongoRepository<Chapter, String> {
-
     // Lấy toàn bộ danh sách chương của một bộ truyện
     List<Chapter> findByStorySlug(String storySlug);
 
-    // Tìm chính xác một chương của truyện
-    Optional<Chapter> findByStorySlugAndChapterName(String storySlug, String chapterName);
+    long countByStorySlug(String storySlug);
 
-    // Xóa toàn bộ chương của truyện (khi admin xóa truyện)
+    Optional<Chapter> findFirstByStorySlugAndChapterName(String storySlug, String chapterName);
+
+    default Optional<Chapter> findByStorySlugAndChapterName(String storySlug, String chapterName) {
+        return findFirstByStorySlugAndChapterName(storySlug, chapterName);
+    }
+
     void deleteByStorySlug(String storySlug);
 }
